@@ -158,3 +158,19 @@ select_variable <- function(train_num, test_num = NULL, min_candidate_len = 10,
     names(selected_var) <- predictor_name
     selected_var
 }
+
+scale_train_test <- function(train_num, test_num = NULL) {
+    train_mean <- colMeans(train_num, na.rm = T)
+    train_sd <- apply(train_num, 2, sd, na.rm = T)
+
+    train_scaled <- apply(train_num, 1, function(x) (x - train_mean) / train_sd)
+    train_scaled <- data.frame(t(train_scaled))
+    output <- list(train_scaled = train_scaled)
+
+    if (!is.null(test_set)) {
+        test_scaled <- apply(test_num, 1, function(x) (x - train_mean) / train_sd)
+        test_scaled <- data.frame(t(test_scaled))
+        output <- c(output, test_scaled = list(test_scaled))
+    }
+    output
+}
