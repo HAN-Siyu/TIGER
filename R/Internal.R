@@ -65,20 +65,59 @@ compute_average <- function(input_qc_data, qc_idx = 1, var_start_idx = 5) {
     qc_reference <- data.frame(t(qc_meanVal))
 }
 
-select_variable <- function(train_num, test_num = NULL, min_candidate_len = 10,
+remove_NA <- function(input_data_num, data_label = NULL) {
+    data_na_sample_idx <- (apply(input_data_num, 1, function(x) any(is.na(x))))
+    data_na_sample_sum <- sum(data_na_sample_idx)
+    if (data_na_sample_sum == 1) {
+        warning(paste0("One sample in ", data_label, " contains NA and has been removed."))
+        input_data_num <- input_data_num[!data_na_sample_idx,]
+    } else if (data_na_sample_sum > 1) {
+        warning(paste0(data_na_sample_sum, " samples in ", data_label, " contain NA and have been removed."))
+        input_data_num <- input_data_num[!data_na_sample_idx,]
+    }
+    if (nrow(input_data_num) == 0) stop(paste0("Variable selection failed: ", data_label, " contain too many NA!"))
+    input_data_num
+}
+
+compute_cor <- function(train_num, test_num = NULL,
+                        cor_type = c("pcor", "cor"),
+                        cor_method = c("pearson", "spearman")) {
+    cor_type   <- match.arg(cor_type)
+    cor_method <- match.arg(cor_method)
+
+    if (!is.null(test_num)) {
+        if (any(names(train_num) != names(test_num))) stop("Error: Variables in training and test data cannot match!")
+    }
+
+    train_num_noNA <- remove_NA(train_num, data_label = "training data")
+    if (!is.null(test_num)) test_num_noNA <- remove_NA(test_num, data_label = "test data")
+
+    if (cor_type == "pcor") {
+        train_cor <- data.frame(ppcor::pcor(train_num, method = cor_method)$estimate)
+
+        if (!is.null(test_num)) {
+            test_cor <- data.frame(ppcor::pcor(test_num, method = cor_method)$estimate)
+        } else test_cor <- NULL
+
+    } else {
+        train_cor <- data.frame(cor(train_num, method = cor_method, use = "complete.obs"))
+
+        if (!is.null(test_num)) {
+            test_cor <- data.frame(cor(test_num, method = cor_method, use = "complete.obs"))
+        } else test_cor <- NULL
+    }
+
+    cor_info <- list(variable_name = names(train_cor),
+                     train_cor = train_cor, test_cor = test_cor)
+}
+
+select_variable <- function(cor_info, min_candidate_len = 10,
                             max_candidate_len = 30) {
 
     min_candidate_len <- ifelse(is.null(min_candidate_len), 1, min_candidate_len)
-    max_candidate_len <- ifelse(is.null(max_candidate_len), 9999999, max_candidate_len)
+    max_candidate_len <- ifelse(is.null(max_candidate_len), ncol(train_num), max_candidate_len)
 
-    train_cor <- data.frame(abs(cor(train_num, method = "spearman", use = "complete.obs")))
-    predictor_name <- names(train_cor)
 
-    if (!is.null(test_num)) {
-        test_cor <- data.frame(abs(cor(test_num, method = "spearman", use = "complete.obs")))
-        predictor_name_test <- names(test_cor)
-        predictor_name <- intersect(predictor_name, predictor_name_test)
-    } else test_cor <- NULL
 
     selected_var <- lapply(predictor_name, function(input_one_predictor_name,
                                                     train_cor, test_cor,
