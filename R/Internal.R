@@ -93,17 +93,17 @@ compute_cor <- function(train_num, test_num = NULL,
     if (!is.null(test_num)) test_num_noNA <- remove_NA(test_num, data_label = "test data")
 
     if (cor_type == "pcor") {
-        train_cor <- data.frame(ppcor::pcor(train_num, method = cor_method)$estimate)
+        train_cor <- data.frame(ppcor::pcor(train_num_noNA, method = cor_method)$estimate)
 
         if (!is.null(test_num)) {
-            test_cor <- data.frame(ppcor::pcor(test_num, method = cor_method)$estimate)
+            test_cor <- data.frame(ppcor::pcor(test_num_noNA, method = cor_method)$estimate)
         } else test_cor <- NULL
 
     } else {
-        train_cor <- data.frame(cor(train_num, method = cor_method, use = "complete.obs"))
+        train_cor <- data.frame(cor(train_num_noNA, method = cor_method, use = "complete.obs"))
 
         if (!is.null(test_num)) {
-            test_cor <- data.frame(cor(test_num, method = cor_method, use = "complete.obs"))
+            test_cor <- data.frame(cor(test_num_noNA, method = cor_method, use = "complete.obs"))
         } else test_cor <- NULL
     }
 
@@ -111,90 +111,93 @@ compute_cor <- function(train_num, test_num = NULL,
                      train_cor = train_cor, test_cor = test_cor)
 }
 
-select_variable <- function(cor_info, min_candidate_len = 10,
-                            max_candidate_len = 30) {
+select_variable <- function(cor_info, min_var_num = NULL,
+                            max_var_num = NULL, cl) {
 
-    min_candidate_len <- ifelse(is.null(min_candidate_len), 1, min_candidate_len)
-    max_candidate_len <- ifelse(is.null(max_candidate_len), ncol(train_num), max_candidate_len)
+    min_var_num <- ifelse(is.null(min_var_num), 1, min_var_num)
+    max_var_num <- ifelse(is.null(max_var_num), length(cor_info$variable_name), max_var_num)
 
+    selected_var <- parallel::parLapply(cl, cor_info$variable_name, function(input_one_variable_name,
+                                                                             train_cor, test_cor,
+                                                                             min_var_num, max_var_num) {
 
+        correlated_train <- abs(train_cor[input_one_variable_name])
+        correlated_train <- correlated_train[order(correlated_train[[1]], decreasing = TRUE),,drop = FALSE]
 
-    selected_var <- lapply(predictor_name, function(input_one_predictor_name,
-                                                    train_cor, test_cor,
-                                                    min_candidate_len) {
-
-        correlated_idx_train <- train_cor[input_one_predictor_name] > 0.5
-        correlated_var <- train_cor[input_one_predictor_name][correlated_idx_train,,drop = F]
-        correlated_var_name <- row.names(correlated_var)
+        correlated_train_name <- row.names(correlated_train)
+        candidate_train_name  <- correlated_train_name[correlated_train[[1]] > 0.5]
+        candidate_var_name    <- candidate_train_name
 
         if (!is.null(test_cor)) {
-            correlated_idx_test <- test_cor[input_one_predictor_name] > 0.5
-            correlated_test <- test_cor[input_one_predictor_name][correlated_idx_test,,drop = F]
+            correlated_test <- abs(test_cor[input_one_variable_name])
+            correlated_test <- correlated_test[order(correlated_test[[1]], decreasing = TRUE),,drop = FALSE]
+
             correlated_test_name <- row.names(correlated_test)
-            correlated_var_name <- intersect(correlated_var_name, correlated_test_name)
+            candidate_test_name  <- correlated_test_name[correlated_test[[1]] > 0.5]
+            candidate_var_name   <- intersect(candidate_var_name, candidate_test_name)
         }
 
-        if (length(correlated_var_name) < min_candidate_len) {
-            candidate_var <- train_cor[input_one_predictor_name][order(train_cor[input_one_predictor_name], decreasing = T),,drop = F]
+        if (length(candidate_var_name) < min_var_num) {
 
-            if (!is.null(test_cor)) {
-                candidate_var_test <- test_cor[input_one_predictor_name][order(test_cor[input_one_predictor_name], decreasing = T),,drop = F]
-                upper_limit <- min_candidate_len
-
-                candidate_var_test_list <- row.names(candidate_var_test)
-                candidate_var_list <- row.names(candidate_var)
+            if (is.null(test_cor)) {
+                selected_var_name <- correlated_train_name[1:min_var_num]
+            } else {
+                current_upper_limit <- min(length(candidate_train_name), length(candidate_test_name))
+                current_upper_limit <- max(current_upper_limit, min_var_num)
 
                 while (1) {
-                    candidate_var_test_tmp <- candidate_var_test_list[1:upper_limit]
-                    candidate_var_train_tmp <- candidate_var_list[1:upper_limit]
-                    selected_var_name <- intersect(candidate_var_train_tmp, candidate_var_test_tmp)
-                    if (length(selected_var_name) < min_candidate_len) {
-                        upper_limit <- upper_limit + 1
-                        if (upper_limit > length(candidate_var_test_list)) {
-                            message(input_one_predictor_name, " - min candidate: limit greater than var length.")
-                            break
-                        }
-                    } else break
+                    candidate_test_name_tmp  <- correlated_test_name[1:current_upper_limit]
+                    candidate_train_name_tmp <- correlated_train_name[1:current_upper_limit]
+                    candidate_var_name_tmp <- intersect(candidate_train_name_tmp, candidate_test_name_tmp)
+                    if (length(candidate_var_name_tmp) < min_var_num) {
+                        current_upper_limit <- current_upper_limit + 1
+                        # if (current_upper_limit > length(correlated_test_name)) {
+                        #     message(input_one_variable_name, " - min candidate: limit greater than var length.")
+                        #     break
+                        # }
+                    } else {
+                        selected_var_name <- candidate_var_name_tmp
+                        break
+                    }
                 }
 
-            } else {
-                selected_var_name <- row.names(candidate_var)[1:min_candidate_len]
             }
 
+        } else if (length(candidate_var_name) > max_var_num) {
 
-        } else if (length(correlated_var_name) > max_candidate_len) {
-            candidate_var <- train_cor[input_one_predictor_name][order(train_cor[input_one_predictor_name], decreasing = T),,drop = F]
-
-            if (!is.null(test_cor)) {
-                candidate_var_test <- test_cor[input_one_predictor_name][order(test_cor[input_one_predictor_name], decreasing = T),,drop = F]
-                upper_limit <- max_candidate_len
-
-                candidate_var_test_list <- row.names(candidate_var_test)
-                candidate_var_list <- row.names(candidate_var)
+            if (is.null(test_cor)) {
+                selected_var_name <- correlated_train_name[1:max_var_num]
+            } else {
+                upper_limit <- max_var_num
 
                 while (1) {
-                    candidate_var_test_tmp <- candidate_var_test_list[1:upper_limit]
-                    candidate_var_train_tmp <- candidate_var_list[1:upper_limit]
-                    selected_var_name <- intersect(candidate_var_train_tmp, candidate_var_test_tmp)
-                    if (length(selected_var_name) < max_candidate_len) {
+                    candidate_test_name_tmp  <- correlated_test_name[1:upper_limit]
+                    candidate_train_name_tmp <- correlated_train_name[1:upper_limit]
+                    candidate_var_name_tmp <- intersect(candidate_train_name_tmp, candidate_test_name_tmp)
+
+                    if (length(candidate_var_name_tmp) < max_var_num) {
                         upper_limit <- upper_limit + 1
-                        if (upper_limit > length(candidate_var_test_list)) {
-                            message(input_one_predictor_name, " - max candidate: limit greater than var length.")
-                            break
-                        }
-                    } else break
+                        # if (upper_limit > length(correlated_test_name)) {
+                        #     message(input_one_variable_name, " - max candidate: limit greater than var length.")
+                        #     break
+                        # }
+                    } else {
+                        selected_var_name <- candidate_var_name_tmp
+                        break
+                    }
                 }
 
-            } else {
-                selected_var_name <- row.names(candidate_var)[1:max_candidate_len]
             }
+
         } else {
-            selected_var_name <- correlated_var_name
+            selected_var_name <- candidate_var_name
         }
         selected_var_name
     },
-    train_cor = train_cor, test_cor = test_cor, min_candidate_len = min_candidate_len)
-    names(selected_var) <- predictor_name
+    train_cor = cor_info$train_cor, test_cor = cor_info$test_cor,
+    min_var_num = min_var_num, max_var_num = max_var_num)
+
+    names(selected_var) <- cor_info$variable_name
     selected_var
 }
 
