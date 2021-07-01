@@ -1,9 +1,9 @@
 compute_RSD <- function(input_data) {
-    cv <- sd(input_data, na.rm = T) / mean(input_data, na.rm = T)
-    cv
+    val_RSD <- sd(input_data, na.rm = T) / mean(input_data, na.rm = T)
+    val_RSD
 }
 
-.boxplot.stats <- function(x, coef = 1.5, do.conf = TRUE, do.out = TRUE) {
+Internal.boxplot.stats <- function(x, coef = 1.5, do.conf = TRUE, do.out = TRUE) {
     if (coef < 0)
         stop("'coef' must not be negative")
     nna <- !is.na(x)
@@ -32,7 +32,7 @@ compute_RSD <- function(input_data) {
          iqr = iqr, lower_limit = lower_limit, upper_limit = upper_limit)
 }
 
-compute_average <- function(input_qc_data, qc_idx = 1, var_start_idx = 5) {
+Internal.compute_average <- function(input_qc_data, qc_idx = 1, var_start_idx = 5) {
     set.seed(1)
     input_qc_data[[qc_idx]] <- as.character(input_qc_data[[qc_idx]])
 
@@ -65,8 +65,8 @@ compute_average <- function(input_qc_data, qc_idx = 1, var_start_idx = 5) {
     qc_reference <- data.frame(t(qc_meanVal))
 }
 
-remove_NA <- function(input_data_num, data_label = NULL) {
-    data_na_sample_idx <- (apply(input_data_num, 1, function(x) any(is.na(x))))
+Internal.remove_NA <- function(input_data_num, data_label = NULL) {
+    data_na_sample_idx <- apply(input_data_num, 1, function(x) any(is.na(x)))
     data_na_sample_sum <- sum(data_na_sample_idx)
     if (data_na_sample_sum == 1) {
         warning(paste0("One sample in ", data_label, " contains NA and has been removed."))
@@ -79,18 +79,12 @@ remove_NA <- function(input_data_num, data_label = NULL) {
     input_data_num
 }
 
-compute_cor <- function(train_num, test_num = NULL,
-                        cor_type = c("pcor", "cor"),
-                        cor_method = c("pearson", "spearman")) {
-    cor_type   <- match.arg(cor_type)
-    cor_method <- match.arg(cor_method)
+Internal.compute_cor <- function(train_num, test_num = NULL,
+                                 cor_type = c("pcor", "cor"),
+                                 cor_method = c("pearson", "spearman")) {
 
-    if (!is.null(test_num)) {
-        if (any(names(train_num) != names(test_num))) stop("Error: Variables in training and test data cannot match!")
-    }
-
-    train_num_noNA <- remove_NA(train_num, data_label = "training data")
-    if (!is.null(test_num)) test_num_noNA <- remove_NA(test_num, data_label = "test data")
+    train_num_noNA <- Internal.remove_NA(train_num, data_label = "training data")
+    if (!is.null(test_num)) test_num_noNA <- Internal.remove_NA(test_num, data_label = "test data")
 
     if (cor_type == "pcor") {
         train_cor <- data.frame(ppcor::pcor(train_num_noNA, method = cor_method)$estimate)
@@ -111,11 +105,8 @@ compute_cor <- function(train_num, test_num = NULL,
                      train_cor = train_cor, test_cor = test_cor)
 }
 
-select_variable <- function(cor_info, min_var_num = NULL,
-                            max_var_num = NULL, cl) {
-
-    min_var_num <- ifelse(is.null(min_var_num), 1, min_var_num)
-    max_var_num <- ifelse(is.null(max_var_num), length(cor_info$variable_name), max_var_num)
+Internal.select_variable <- function(cor_info, min_var_num = NULL,
+                                     max_var_num = NULL, cl) {
 
     selected_var <- parallel::parLapply(cl, cor_info$variable_name, function(input_one_variable_name,
                                                                              train_cor, test_cor,
@@ -201,18 +192,42 @@ select_variable <- function(cor_info, min_var_num = NULL,
     selected_var
 }
 
-scale_train_test <- function(train_num, test_num = NULL) {
-    train_mean <- colMeans(train_num, na.rm = T)
-    train_sd <- apply(train_num, 2, sd, na.rm = T)
+select_variable <- function(train_num, test_num = NULL,
+                            cor_type = c("pcor", "cor"),
+                            cor_method = c("pearson", "spearman"),
+                            min_var_num = NULL, max_var_num = NULL,
+                            parallel.cores = 2, cl = NULL, output_log = NULL) {
 
-    train_scaled <- apply(train_num, 1, function(x) (x - train_mean) / train_sd)
-    train_scaled <- data.frame(t(train_scaled))
-    output <- list(train_scaled = train_scaled)
+    cor_type   <- match.arg(cor_type)
+    cor_method <- match.arg(cor_method)
 
-    if (!is.null(test_set)) {
-        test_scaled <- apply(test_num, 1, function(x) (x - train_mean) / train_sd)
-        test_scaled <- data.frame(t(test_scaled))
-        output <- c(output, test_scaled = list(test_scaled))
+    if (!is.null(test_num)) {
+        if (any(names(train_num) != names(test_num))) stop("Variables in training and test data cannot match!")
     }
-    output
+
+    min_var_num <- ifelse(is.null(min_var_num), 1, min_var_num)
+    max_var_num <- ifelse(is.null(max_var_num), ncol(train_num), max_var_num)
+
+    min_var_num <- as.integer(min_var_num)
+    max_var_num <- as.integer(max_var_num)
+
+    if (min_var_num < 1) stop("min_var_num must be a positive integer!")
+    if (max_var_num > ncol(train_num)) stop("max_var_num cannot be greater than variable number!")
+
+    stop_cl <- FALSE
+    if (is.null(cl)) {
+        cl <- parallel::makeCluster(parallel.cores, outfile = output_log)
+        stop_cl <- TRUE
+    }
+
+    cor_info <- Internal.compute_cor(train_num = train_num, test_num = test_num,
+                                     cor_type = cor_type, cor_method = cor_method)
+
+    selected_var <- Internal.select_variable(cor_info = cor_info, min_var_num = min_var_num,
+                                             max_var_num = max_var_num, cl = cl)
+
+    if (stop_cl) {
+        parallel::stopCluster(cl)
+    }
+    selected_var
 }
