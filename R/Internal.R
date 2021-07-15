@@ -32,39 +32,6 @@ Internal.boxplot.stats <- function(x, coef = 1.5, do.conf = TRUE, do.out = TRUE)
          iqr = iqr, lower_limit = lower_limit, upper_limit = upper_limit)
 }
 
-Internal.compute_average <- function(input_qc_data, qc_idx = 1, var_start_idx = 5) {
-    set.seed(1)
-    input_qc_data[[qc_idx]] <- as.character(input_qc_data[[qc_idx]])
-
-    qc_data <- input_qc_data[,c(qc_idx, var_start_idx:ncol(input_qc_data))]
-
-    names(qc_data)[1] <- "QC_ID"
-
-    var_start_idx <- 2
-
-    for(i in var_start_idx:ncol(qc_data)) {
-        qc_data[!is.finite(qc_data[,i]), i] <- NA
-    }
-
-    ### start - calculate pseudo-true values
-    qc_id <- qc_data$QC_ID
-    qc_types <- as.character(unique(qc_id))
-    qc_num <- qc_data[,var_start_idx:ncol(qc_data)]
-
-    qc_meanVal <- sapply(qc_types, function(qc_type, qc_num, qc_id) {
-        qc_type_num <- qc_num[qc_id %in% qc_type,]
-        qc_remove_outlier <- sapply(qc_type_num, function(input_col) {
-            outlier_res <- .boxplot.stats(input_col, coef = 1.5)$out
-            input_col[input_col %in% outlier_res] <- mean(input_col[!input_col %in% outlier_res], na.rm = T)
-            input_col
-        })
-
-        qc_value <- colMeans(qc_remove_outlier, na.rm = T)
-    }, qc_num = qc_num, qc_id = qc_id)
-
-    qc_reference <- data.frame(t(qc_meanVal))
-}
-
 Internal.remove_NA <- function(input_data_num, data_label = NULL) {
     data_na_sample_idx <- apply(input_data_num, 1, function(x) any(is.na(x)))
     data_na_sample_sum <- sum(data_na_sample_idx)
@@ -231,3 +198,56 @@ select_variable <- function(train_num, test_num = NULL,
     }
     selected_var
 }
+
+Internal.compute_targetVal <- function(input_col, compute_method = c("mean", "median"),
+                                       remove_outlier = TRUE) {
+    if (remove_outlier) outlier_res <- Internal.boxplot.stats(input_col, coef = 1.5)$out
+
+    if (compute_method == "mean") {
+        if (remove_outlier) input_col[input_col %in% outlier_res] <- mean(input_col[!input_col %in% outlier_res], na.rm = T)
+        res <- mean(input_col, na.rm = T)
+    } else {
+        if (remove_outlier) input_col[input_col %in% outlier_res] <- median(input_col[!input_col %in% outlier_res], na.rm = T)
+        res <- median(input_col, na.rm = T)
+    }
+    res
+}
+
+compute_targetVal <- function(QC_data, col_sampleID, col_batchID,
+                              compute_method = c("mean", "median"),
+                              batch_based = FALSE, remove_outlier = TRUE) {
+    compute_method   <- match.arg(compute_method)
+
+    sampleID <- as.factor(QC_data[[col_sampleID]])
+    batchID  <- as.factor(QC_data[[col_batchID]])
+    data_numeric <- QC_data[-c(col_sampleID, col_batchID)]
+    if (!all(sapply(data_numeric, is.numeric))) stop("The values of the input dataset (except sampleID and batchID) should be numeric!")
+
+    if (batch_based) {
+        target_values <- aggregate(data_numeric, by = list(batch = batchID, sample = sampleID),
+                                   FUN = Internal.compute_targetVal, compute_method = compute_method,
+                                   remove_outlier = remove_outlier)
+        batchID <- target_values$batch
+        target_values$batch <- NULL
+        target_values_list <- split(target_values, f = batchID)
+    } else {
+        target_values_list <- list(wholeDataset = aggregate(data_numeric,
+                                                            by = list(sample = sampleID),
+                                                            FUN =  Internal.compute_targetVal,
+                                                            compute_method = compute_method,
+                                                            remove_outlier = remove_outlier))
+    }
+
+    target_values <- lapply(target_values_list, function(x) {
+        row.names(x) <- x$sample
+        x$sample <- NULL
+        x
+    })
+    target_values
+}
+
+tar_mean_batch <- compute_targetVal(QC_data = input_dataset_bak,
+                                    col_sampleID = 1, col_batchID = 2,
+                                    compute_method = "mean",
+                                    batch_based = F, remove_outlier = T)
+
