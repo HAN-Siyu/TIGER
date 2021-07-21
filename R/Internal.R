@@ -47,24 +47,24 @@ Internal.remove_NA <- function(input_data_num, data_label = NULL) {
 }
 
 Internal.compute_cor <- function(train_num, test_num = NULL,
-                                 cor_type = c("pcor", "cor"),
-                                 cor_method = c("pearson", "spearman")) {
+                                 correlation_type = c("pcor", "cor"),
+                                 correlation_method = c("spearman", "pearson")) {
 
     train_num_noNA <- Internal.remove_NA(train_num, data_label = "training data")
     if (!is.null(test_num)) test_num_noNA <- Internal.remove_NA(test_num, data_label = "test data")
 
-    if (cor_type == "pcor") {
-        train_cor <- data.frame(ppcor::pcor(train_num_noNA, method = cor_method)$estimate)
+    if (correlation_type == "pcor") {
+        train_cor <- data.frame(ppcor::pcor(train_num_noNA, method = correlation_method)$estimate)
 
         if (!is.null(test_num)) {
-            test_cor <- data.frame(ppcor::pcor(test_num_noNA, method = cor_method)$estimate)
+            test_cor <- data.frame(ppcor::pcor(test_num_noNA, method = correlation_method)$estimate)
         } else test_cor <- NULL
 
     } else {
-        train_cor <- data.frame(cor(train_num_noNA, method = cor_method, use = "complete.obs"))
+        train_cor <- data.frame(cor(train_num_noNA, method = correlation_method, use = "complete.obs"))
 
         if (!is.null(test_num)) {
-            test_cor <- data.frame(cor(test_num_noNA, method = cor_method, use = "complete.obs"))
+            test_cor <- data.frame(cor(test_num_noNA, method = correlation_method, use = "complete.obs"))
         } else test_cor <- NULL
     }
 
@@ -160,13 +160,33 @@ Internal.select_variable <- function(cor_info, min_var_num = NULL,
 }
 
 select_variable <- function(train_num, test_num = NULL,
-                            cor_type = c("pcor", "cor"),
-                            cor_method = c("pearson", "spearman"),
+                            correlation_type = c("pcor", "cor"),
+                            correlation_method = c("spearman", "pearson"),
                             min_var_num = NULL, max_var_num = NULL,
+                            coerce_numeric = FALSE,
                             parallel.cores = 2, cl = NULL, output_log = NULL) {
 
-    cor_type   <- match.arg(cor_type)
-    cor_method <- match.arg(cor_method)
+    correlation_type   <- match.arg(correlation_type)
+    correlation_method <- match.arg(correlation_method)
+
+    if(coerce_numeric) {
+        train_num <- as.data.frame(sapply(train_num, as.numeric))
+        idx_NA <- sapply(train_num, function(x) {
+            all(is.na(x))
+        })
+        train_num <- train_num[,!idx_NA]
+
+        if (!is.null(test_num)) {
+            test_num <- as.data.frame(sapply(test_num, as.numeric))
+            idx_NA <- sapply(test_num, function(x) {
+                all(is.na(x))
+            })
+            test_num <- test_num[,!idx_NA]
+        }
+    } else {
+        if (!all(sapply(train_num, is.numeric))) stop("The values of train samples should be numeric!")
+        if (!is.null(test_num) & !all(sapply(test_num, is.numeric))) stop("The values of test samples should be numeric!")
+    }
 
     if (!is.null(test_num)) {
         if (any(names(train_num) != names(test_num))) stop("Variables in training and test data cannot match!")
@@ -188,7 +208,8 @@ select_variable <- function(train_num, test_num = NULL,
     }
 
     cor_info <- Internal.compute_cor(train_num = train_num, test_num = test_num,
-                                     cor_type = cor_type, cor_method = cor_method)
+                                     correlation_type = correlation_type,
+                                     correlation_method = correlation_method)
 
     selected_var <- Internal.select_variable(cor_info = cor_info, min_var_num = min_var_num,
                                              max_var_num = max_var_num, cl = cl)
@@ -199,34 +220,45 @@ select_variable <- function(train_num, test_num = NULL,
     selected_var
 }
 
-Internal.compute_targetVal <- function(input_col, compute_method = c("mean", "median"),
-                                       remove_outlier = TRUE) {
-    if (remove_outlier) outlier_res <- Internal.boxplot.stats(input_col, coef = 1.5)$out
+Internal.compute_targetVal <- function(input_col, targetVal_method = c("median", "mean"),
+                                       targetVal_removeOutlier = TRUE) {
+    if (targetVal_removeOutlier) outlier_res <- Internal.boxplot.stats(input_col, coef = 1.5)$out
 
-    if (compute_method == "mean") {
-        if (remove_outlier) input_col[input_col %in% outlier_res] <- mean(input_col[!input_col %in% outlier_res], na.rm = T)
+    if (targetVal_method == "mean") {
+        if (targetVal_removeOutlier) input_col[input_col %in% outlier_res] <- mean(input_col[!input_col %in% outlier_res], na.rm = T)
         res <- mean(input_col, na.rm = T)
     } else {
-        if (remove_outlier) input_col[input_col %in% outlier_res] <- median(input_col[!input_col %in% outlier_res], na.rm = T)
+        if (targetVal_removeOutlier) input_col[input_col %in% outlier_res] <- median(input_col[!input_col %in% outlier_res], na.rm = T)
         res <- median(input_col, na.rm = T)
     }
     res
 }
 
-compute_targetVal <- function(QC_data, col_sampleID, col_batchID,
-                              compute_method = c("mean", "median"),
-                              batch_based = FALSE, remove_outlier = TRUE) {
-    compute_method   <- match.arg(compute_method)
+compute_targetVal <- function(QC_data, col_sampleType, col_batchID,
+                              targetVal_method = c("median", "mean"),
+                              targetVal_batch = FALSE,
+                              targetVal_removeOutlier = TRUE,
+                              coerce_numeric = FALSE) {
+    targetVal_method   <- match.arg(targetVal_method)
 
-    sampleID <- as.factor(QC_data[[col_sampleID]])
+    sampleID <- as.factor(QC_data[[col_sampleType]])
     batchID  <- as.factor(QC_data[[col_batchID]])
-    data_numeric <- QC_data[-c(col_sampleID, col_batchID)]
-    if (!all(sapply(data_numeric, is.numeric))) stop("The values of the input dataset (except sampleID and batchID) should be numeric!")
+    data_numeric <- QC_data[!names(QC_data) %in% c(col_sampleType, col_batchID)]
 
-    if (batch_based) {
+    if(coerce_numeric) {
+        data_numeric <- as.data.frame(sapply(data_numeric, as.numeric))
+        idx_NA <- sapply(data_numeric, function(x) {
+            all(is.na(x))
+        })
+        data_numeric <- data_numeric[,!idx_NA]
+    } else {
+        if (!all(sapply(data_numeric, is.numeric))) stop("The values of the input dataset (except sampleType and batchID) should be numeric!")
+    }
+
+    if (targetVal_batch) {
         target_values <- aggregate(data_numeric, by = list(batch = batchID, sample = sampleID),
-                                   FUN = Internal.compute_targetVal, compute_method = compute_method,
-                                   remove_outlier = remove_outlier)
+                                   FUN = Internal.compute_targetVal, targetVal_method = targetVal_method,
+                                   targetVal_removeOutlier = targetVal_removeOutlier)
         batchID <- target_values$batch
         target_values$batch <- NULL
         target_values_list <- split(target_values, f = batchID)
@@ -234,8 +266,8 @@ compute_targetVal <- function(QC_data, col_sampleID, col_batchID,
         target_values_list <- list(wholeDataset = aggregate(data_numeric,
                                                             by = list(sample = sampleID),
                                                             FUN =  Internal.compute_targetVal,
-                                                            compute_method = compute_method,
-                                                            remove_outlier = remove_outlier))
+                                                            targetVal_method = targetVal_method,
+                                                            targetVal_removeOutlier = targetVal_removeOutlier))
     }
 
     target_values <- lapply(target_values_list, function(x) {
@@ -246,8 +278,168 @@ compute_targetVal <- function(QC_data, col_sampleID, col_batchID,
     target_values
 }
 
-tar_mean_batch <- compute_targetVal(QC_data = input_dataset_bak,
-                                    col_sampleID = 1, col_batchID = 2,
-                                    compute_method = "mean",
-                                    batch_based = F, remove_outlier = T)
+Internal.compute_errorRatio <- function(train_samples, col_sampleType, targetVal_df, current_var, cl) {
+    out <- parallel::parSapply(cl, 1:nrow(train_samples), function(row_idx, train_samples,
+                                                                   col_sampleType, targetVal_df, current_var) {
+        targetVal <- targetVal_df[row.names(targetVal_df) == train_samples[[col_sampleType]] [row_idx],] [[current_var]]
+        errorRatio <- (train_samples[[current_var]][row_idx] - targetVal) / targetVal
+    }, train_samples = train_samples, col_sampleType = col_sampleType,
+    targetVal_df = targetVal_df, current_var = current_var)
+    out
+}
 
+Internal.run_ensemble <- function(trainSet, trainSet_raw, trainSet_targetVal,
+                                  testSet = NULL, mtry_ratio = seq(0.2, 0.8, 0.2),
+                                  nodesize_ratio = seq(0.2, 0.8, 0.2),
+                                  ...) {
+    if (!is.null(mtry_ratio)) mtry <- round(mtry_ratio * ncol(trainSet))
+    if (!is.null(nodesize_ratio)) nodesize <- round(nodesize_ratio * nrow(trainSet))
+
+    rf_hyperparams <- expand.grid(mtry = unique(mtry),
+                                  nodesize = unique(nodesize),
+                                  ... = ...)
+
+    ensemble_y_pred_rf <- lapply(1:nrow(rf_hyperparams), function(idx) {
+        current_hyperparams <- as.list(rf_hyperparams[idx,])
+
+        folds_train <- caret::createFolds(1:length(trainSet$y), k = 5, returnTrain = T)
+
+        res_folds <- lapply(folds_train, function(train_idx, rf_params) {
+
+            train_fold     <- trainSet[train_idx,]
+            validate_fold  <- trainSet[-train_idx,]
+
+            fold_formula <- c(formula = as.formula(y ~ .), data = list(train_fold), current_hyperparams)
+            RF_fold_mod <- do.call(randomForest::randomForest, fold_formula)
+
+            pred_fold <- predict(RF_fold_mod, validate_fold)
+
+        })
+
+        base_formula <- c(formula = as.formula(y ~ .), data = list(trainSet), current_hyperparams)
+        RF_base_mod <- do.call(randomForest::randomForest, base_formula)
+
+        if(!is.null(testSet)) {
+            pred_test <- predict(RF_base_mod, testSet)
+            out_pred <- list(pred_train = train_y_pred_rf,
+                             pred_test = test_y_pred_rf)
+        }
+
+    })
+
+
+}
+
+run_TIGER <- function(test_samples, train_samples,
+                      col_sampleID, col_sampleType, col_batchID,
+                      col_order = NULL, col_position = NULL,
+                      targetVal_external = NULL, targetVal_method = c("median", "mean"),
+                      targetVal_batch = FALSE, targetVal_removeOutlier = TRUE,
+                      correlation_type = c("pcor", "cor"),
+                      correlation_method = c("spearman", "pearson"),
+                      min_var_num = 10, max_var_num = 30,
+                      rf_hyperparams,
+                      parallel.cores = 2, output_log = NULL) {
+
+    message("+ Initialising...   ", Sys.time())
+    cl <- parallel::makeCluster(parallel.cores, outfile = output_log)
+
+    # zero values?
+    # Inf values?
+    # NA values?
+    # order the output
+
+    for (col_idx in c(col_sampleID, col_sampleType, col_batchID)) {
+        test_samples[[col_idx]] <- as.character(test_samples[[col_idx]])
+        train_samples[[col_idx]] <- as.character(train_samples[[col_idx]])
+    }
+
+    if (!all(sapply(train_samples[!names(train_samples) %in% c(col_sampleID, col_sampleType, col_batchID)], is.numeric))) {
+        stop("The values of train samples (except sampleType and batchID) should be numeric!")
+    }
+
+    if (!all(sapply(test_samples[!names(test_samples) %in%c(col_sampleID, col_sampleType, col_batchID)], is.numeric))) {
+        stop("The values of test samples (except sampleType and batchID) should be numeric!")
+    }
+
+    batchID_train <- unique(train_samples[[col_batchID]])
+    batchID_test <- unique(test_samples[[col_batchID]])
+
+    if(!all(batchID_test %in% batchID_train)) stop("The batchID in train and test samples cannot match!")
+    batchID <- batchID_test
+
+    # Target value computation
+    if (is.null(targetVal_external)) {
+        targetVal_list <- compute_targetVal(QC_data = train_samples[!names(train_samples) %in% c(col_sampleID, col_order, col_position)],
+                                        col_sampleType = col_sampleType,
+                                        col_batchID = col_batchID,
+                                        targetVal_method = targetVal_method,
+                                        targetVal_batch = targetVal_batch,
+                                        targetVal_removeOutlier = targetVal_removeOutlier,
+                                        coerce_numeric = FALSE)
+    } else {
+        targetVal_list <- targetVal_external
+    }
+
+
+    var_names <- names(targetVal_list[[1]])
+    train_num <- train_samples[!names(train_samples) %in% c(col_sampleID, col_sampleType, col_batchID, col_order, col_position)]
+    test_num <- test_samples[!names(test_samples) %in% c(col_sampleID, col_sampleType, col_batchID, col_order, col_position)]
+
+    if (!all(var_names == names(train_num))) stop("Varibale names cannot match!")
+    if (!all(var_names == names(test_num)))  stop("Varibale names cannot match!")
+
+    # Variable selection
+    var_selected <- select_variable(train_num = train_num,
+                                    test_num = test_num,
+                                    correlation_type = correlation_type,
+                                    correlation_method = correlation_method,
+                                    min_var_num = min_var_num, max_var_num = max_var_num,
+                                    coerce_numeric = TRUE,
+                                    parallel.cores = NULL, cl = cl, output_log = output_log)
+
+    pbapply::pboptions(type = "timer", style = 3, char = "=")
+    message("+ Processing...   ", Sys.time())
+
+    # Original sample order backup
+    test_samples <- cbind(original_idx = 1:nrow(test_samples), test_samples)
+
+    res_var <- pbapply::pblapply(var_names, function(current_var, var_selected, targetVal_batch, rf_hyperparams,
+                                                     train_samples, test_samples, col_sampleID, col_sampleType,
+                                                     col_batchID, col_order, col_position, batchID) {
+
+        train_X_selected_var <- train_samples[c(col_sampleID, col_sampleType, col_batchID, col_order, col_position, var_selected[[current_var]]) ]
+
+        if (!targetVal_batch) {
+            train_y_all <- Internal.compute_errorRatio(train_samples = train_samples[!names(train_samples) %in% c(col_sampleID, col_batchID, col_order, col_position)],
+                                                   col_sampleType = col_sampleType,
+                                                   targetVal_df = targetVal_list$wholeDataset,
+                                                   current_var = current_var, cl = cl)
+
+            train_data_all <- cbind(y = train_y_all, train_X_selected_var)
+        }
+
+        res_batch <- lapply(batchID, function(current_batch) {
+            message("  - Current variable: ", current_var, ", ", "Current batch: ", current_batch, ", ", Sys.time())
+
+            if (targetVal_batch) {
+                train_X_batch <- train_X_selected_var[train_X_selected_var[[col_batchID]] == current_batch,]
+
+                train_y <- Internal.compute_errorRatio(train_samples = train_X_batch[!names(train_X_batch) %in% c(col_sampleID, col_batchID, col_order, col_position)],
+                                                       col_sampleType = col_sampleType,
+                                                       targetVal_df = targetVal_list$wholeDataset,
+                                                       current_var = current_var, cl = cl)
+
+                train_data <- cbind(y = train_y, train_X_selected_var)
+            } else {
+                train_data <- train_data_all[train_data_all[[col_batchID]] == current_batch,]
+            }
+
+        })
+
+    }, var_selected = var_selected, targetVal_batch = targetVal_batch, rf_hyperparams = rf_hyperparams,
+    train_samples = train_samples, test_samples = test_samples, col_sampleID = col_sampleID,
+    col_sampleType = col_sampleType, col_batchID = col_batchID, col_order = col_order,
+    col_position = col_position, batchID = batchID)
+
+}
