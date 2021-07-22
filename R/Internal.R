@@ -169,6 +169,14 @@ select_variable <- function(train_num, test_num = NULL,
     correlation_type   <- match.arg(correlation_type)
     correlation_method <- match.arg(correlation_method)
 
+    test_num <- test_num[!sapply(test_num, anyNA)]
+    test_num <- test_num[sapply(test_num, is.finite)]
+    if (nrow(test_num) < 3) stop("  - Data of test samples have too many NA or infinite values. Maybe you would likt to impute your data!")
+
+    train_num <- train_num[!sapply(train_num, anyNA)]
+    train_num <- train_num[sapply(train_num, is.finite)]
+    if (nrow(train_num) < 3) stop("  - Data of train samples have too many NA or infinite values. Maybe you would likt to impute your data!")
+
     if(coerce_numeric) {
         train_num <- as.data.frame(sapply(train_num, as.numeric))
         idx_NA <- sapply(train_num, function(x) {
@@ -184,12 +192,12 @@ select_variable <- function(train_num, test_num = NULL,
             test_num <- test_num[,!idx_NA]
         }
     } else {
-        if (!all(sapply(train_num, is.numeric))) stop("The values of train samples should be numeric!")
-        if (!is.null(test_num) & !all(sapply(test_num, is.numeric))) stop("The values of test samples should be numeric!")
+        if (!all(sapply(train_num, is.numeric))) stop("  - The values of train samples should be numeric!")
+        if (!is.null(test_num) & !all(sapply(test_num, is.numeric))) stop("  - The values of test samples should be numeric!")
     }
 
     if (!is.null(test_num)) {
-        if (any(names(train_num) != names(test_num))) stop("Variables in training and test data cannot match!")
+        if (any(names(train_num) != names(test_num))) stop("  - Variables in training and test data cannot match!")
     }
 
     min_var_num <- ifelse(is.null(min_var_num), 1, min_var_num)
@@ -198,8 +206,8 @@ select_variable <- function(train_num, test_num = NULL,
     min_var_num <- as.integer(min_var_num)
     max_var_num <- as.integer(max_var_num)
 
-    if (min_var_num < 1) stop("min_var_num must be a positive integer!")
-    if (max_var_num > ncol(train_num)) stop("max_var_num cannot be greater than variable number!")
+    if (min_var_num < 1) stop("  - min_var_num must be a positive integer!")
+    if (max_var_num > ncol(train_num)) stop("  - max_var_num cannot be greater than variable number!")
 
     stop_cl <- FALSE
     if (is.null(cl)) {
@@ -297,7 +305,7 @@ Internal.compute_errorRatio <- function(train_samples, col_sampleType, targetVal
 Internal.run_ensemble <- function(trainSet, testSet,
                                   mtry_ratio = seq(0.2, 0.8, 0.2),
                                   nodesize_ratio = seq(0.2, 0.8, 0.2),
-                                  ...) {
+                                  ..., return_base_res = FALSE) {
 
     if (!is.null(mtry_ratio)) mtry <- round(mtry_ratio * (ncol(trainSet) - 3))
     if (!is.null(nodesize_ratio)) nodesize <- round(nodesize_ratio * nrow(trainSet))
@@ -306,7 +314,7 @@ Internal.run_ensemble <- function(trainSet, testSet,
                                   nodesize = unique(nodesize),
                                   ... = ...)
 
-    ensemble_y_pred_rf <- lapply(1:nrow(rf_hyperparams), function(idx) {
+    pred_ensemble <- lapply(1:nrow(rf_hyperparams), function(idx) {
         current_hyperparams <- as.list(rf_hyperparams[idx,])
 
         folds_train <- caret::createFolds(1:length(trainSet$y), k = 5, returnTrain = T)
@@ -330,17 +338,25 @@ Internal.run_ensemble <- function(trainSet, testSet,
         mean_loss <- mean(unlist(res_folds), na.rm = T)
         mod_weight <- 1/exp(mean_loss)
 
-        trainSet[-c("y_target", "y_raw")] <- NULL
         base_formula <- c(formula = as.formula(y ~ .), data = list(trainSet[!names(trainSet) %in% c("y_target", "y_raw")]),
                           current_hyperparams)
         RF_base_mod <- do.call(randomForest::randomForest, base_formula)
         pred_test <- predict(RF_base_mod, testSet)
         pred_test_convert <- testSet$y_raw / (pred_test + 1)
 
-        out <- data.frame(mod_weight = mod_weight, pred_test_convert = I(list(pred_test_convert)))
+        out <- list(mod_weight = mod_weight, pred_test_convert = pred_test_convert, RF_base_mod = RF_base_mod)
     })
+    mod_weights <- sapply(pred_ensemble, function(x) x$mod_weight)
+    mod_weights_norm <- mod_weights / sum(mod_weights, na.rm = TRUE)
 
-
+    pred_test <- sapply(pred_ensemble, function(x) x$pred_test_convert)
+    pred_norm <- apply(pred_test, 1, function(x) sum(x * mod_weights_norm, na.rm = TRUE))
+    if (return_base_res) {
+        output <- list(pred_norm = pred_norm, base_res = pred_ensemble, base_weights = mod_weights_norm)
+    } else {
+        output <- pred_norm
+    }
+    output
 }
 
 run_TIGER <- function(test_samples, train_samples,
@@ -367,22 +383,33 @@ run_TIGER <- function(test_samples, train_samples,
         train_samples[[col_idx]] <- as.character(train_samples[[col_idx]])
     }
 
+    if (!is.null(col_order)) {
+        if (anyNA(test_samples[[col_order]])  | any(!is.finite(test_samples[[col_order]]))  ) stop("  - test samples: col_order should be numeric only!")
+        if (anyNA(train_samples[[col_order]]) | any(!is.finite(train_samples[[col_order]])) ) stop("  - train samples: col_order should be numeric only!")
+    }
+
+    if (!is.null(col_position)) {
+        if (anyNA(test_samples[[col_position]])  | any(!is.finite(test_samples[[col_position]]))  ) stop("  - test samples: col_position should be numeric only!")
+        if (anyNA(train_samples[[col_position]]) | any(!is.finite(train_samples[[col_position]])) ) stop("  - train samples: col_position should be numeric only!")
+    }
+
     if (!all(sapply(train_samples[!names(train_samples) %in% c(col_sampleID, col_sampleType, col_batchID)], is.numeric))) {
-        stop("The values of train samples (except sampleType and batchID) should be numeric!")
+        stop("  - The values of train samples (except sampleType and batchID) should be numeric!")
     }
 
     if (!all(sapply(test_samples[!names(test_samples) %in%c(col_sampleID, col_sampleType, col_batchID)], is.numeric))) {
-        stop("The values of test samples (except sampleType and batchID) should be numeric!")
+        stop("  - The values of test samples (except sampleType and batchID) should be numeric!")
     }
 
     batchID_train <- unique(train_samples[[col_batchID]])
     batchID_test <- unique(test_samples[[col_batchID]])
 
-    if(!all(batchID_test %in% batchID_train)) stop("The batchID in train and test samples cannot match!")
+    if(!all(batchID_test %in% batchID_train)) stop("  - The batchID in train and test samples cannot match!")
     batchID <- batchID_test
 
     # Target value computation
     if (is.null(targetVal_external)) {
+        message("+ Computing target values...   ", Sys.time())
         targetVal_list <- compute_targetVal(QC_data = train_samples[!names(train_samples) %in% c(col_sampleID, col_order, col_position)],
                                             col_sampleType = col_sampleType,
                                             col_batchID = col_batchID,
@@ -391,18 +418,20 @@ run_TIGER <- function(test_samples, train_samples,
                                             targetVal_removeOutlier = targetVal_removeOutlier,
                                             coerce_numeric = FALSE)
     } else {
+        message("+ External target values loaded.   ", Sys.time())
         targetVal_list <- targetVal_external
     }
 
-
+    message("+ Checking variable names...   ", Sys.time())
     var_names <- names(targetVal_list[[1]])
     train_num <- train_samples[!names(train_samples) %in% c(col_sampleID, col_sampleType, col_batchID, col_order, col_position)]
     test_num <- test_samples[!names(test_samples) %in% c(col_sampleID, col_sampleType, col_batchID, col_order, col_position)]
 
-    if (!all(var_names == names(train_num))) stop("Varibale names cannot match!")
-    if (!all(var_names == names(test_num)))  stop("Varibale names cannot match!")
+    if (!all(var_names == names(train_num))) stop("  - Varibale names cannot match!")
+    if (!all(var_names == names(test_num)))  stop("  - Varibale names cannot match!")
 
     # Variable selection
+    message("+ Selecting highly-correlated variables...   ", Sys.time())
     var_selected <- select_variable(train_num = train_num,
                                     test_num = test_num,
                                     correlation_type = correlation_type,
@@ -411,8 +440,8 @@ run_TIGER <- function(test_samples, train_samples,
                                     coerce_numeric = TRUE,
                                     parallel.cores = NULL, cl = cl, output_log = output_log)
 
-    pbapply::pboptions(type = "timer", style = 3, char = "=")
-    message("+ Processing...   ", Sys.time())
+    pbapply::pboptions(type = "timer", style = 1, char = "=")
+    message("+ Data correction started.   ", Sys.time())
 
     # Original sample order backup
     test_samples <- cbind(original_idx = 1:nrow(test_samples), test_samples)
@@ -420,6 +449,7 @@ run_TIGER <- function(test_samples, train_samples,
     res_var <- pbapply::pblapply(var_names, function(current_var, var_selected, targetVal_batch, rf_hyperparams,
                                                      train_samples, test_samples, col_sampleID, col_sampleType,
                                                      col_batchID, col_order, col_position, batchID, ...) {
+        message("  - Current variable: ", current_var, "   ", Sys.time())
 
         train_X_selected_var <- train_samples[c(col_sampleID, col_sampleType, col_batchID, col_order, col_position, var_selected[[current_var]]) ]
         test_data <- cbind(y_raw = test_samples[[current_var]], test_samples)
@@ -434,8 +464,8 @@ run_TIGER <- function(test_samples, train_samples,
                                     y = train_y_all$errorRatio, train_X_selected_var)
         }
 
-        res_batch <- lapply(batchID, function(current_batch) {
-            message("  - Current variable: ", current_var, ", ", "Current batch: ", current_batch, ", ", Sys.time())
+        res_batch_list <- lapply(batchID, function(current_batch) {
+            # message("    - Current batch: ", current_batch, "   ", Sys.time())
 
             if (targetVal_batch) {
                 train_X_batch <- train_X_selected_var[train_X_selected_var[[col_batchID]] == current_batch,]
@@ -453,17 +483,30 @@ run_TIGER <- function(test_samples, train_samples,
 
             train_data[c(col_sampleID, col_sampleType, col_batchID)] <- NULL
 
-            Internal.run_ensemble(trainSet = train_data[!names(train_data) %in% c(col_sampleID, col_sampleType, col_batchID)],
-                                  testSet = test_data[test_data[[col_batchID]] == current_batch,],
-                                  mtry_ratio = seq(0.2, 0.8, 0.2),
-                                              nodesize_ratio = seq(0.2, 0.8, 0.2),
-                                              ...)
+            var_pred <- Internal.run_ensemble(trainSet = train_data[!names(train_data) %in% c(col_sampleID, col_sampleType, col_batchID)],
+                                              testSet  = test_data[test_data[[col_batchID]] == current_batch,], mtry_ratio = seq(0.2, 0.8, 0.2),
+                                              nodesize_ratio = seq(0.2, 0.8, 0.2), ... = ..., return_base_res = FALSE)
 
         })
-
+        res_batch <- do.call("c", res_batch_list)
+        res_batch_df <- data.frame(res_batch)
+        res_batch_df <- res_batch_df[order(as.numeric(row.names(res_batch_df))),,drop = FALSE]
+        names(res_batch_df) <- current_var
+        res_batch_df
     }, var_selected = var_selected, targetVal_batch = targetVal_batch, rf_hyperparams = rf_hyperparams,
     train_samples = train_samples, test_samples = test_samples, col_sampleID = col_sampleID,
     col_sampleType = col_sampleType, col_batchID = col_batchID, col_order = col_order,
     col_position = col_position, batchID = batchID, ... = ...)
 
+    message("+ Merging results...   ", Sys.time())
+    check_order <- sapply(res_var[-1], function(x) {
+        any(row.names(x) != row.names(res_var[[1]]))
+    })
+    if (any(check_order)) stop("Error in merging data!")
+
+    res_var_df <- do.call("cbind", res_var)
+
+    test_samples[names(res_var_df)] <- res_var_df
+    test_samples$original_idx <- NULL
+    test_samples
 }
