@@ -367,8 +367,9 @@ run_TIGER <- function(test_samples, train_samples,
                       correlation_type = c("pcor", "cor"),
                       correlation_method = c("spearman", "pearson"),
                       min_var_num = 10, max_var_num = 30,
-                      rf_hyperparams,
-                      parallel.cores = 2, output_log = NULL) {
+                      mtry_ratio = seq(0.2, 0.8, 0.2),
+                      nodesize_ratio = seq(0.2, 0.8, 0.2),
+                      ..., parallel.cores = 2, output_log = NULL) {
 
     message("+ Initialising...   ", Sys.time())
     cl <- parallel::makeCluster(parallel.cores, outfile = output_log)
@@ -448,7 +449,8 @@ run_TIGER <- function(test_samples, train_samples,
 
     res_var <- pbapply::pblapply(var_names, function(current_var, var_selected, targetVal_batch, rf_hyperparams,
                                                      train_samples, test_samples, col_sampleID, col_sampleType,
-                                                     col_batchID, col_order, col_position, batchID, ...) {
+                                                     col_batchID, col_order, col_position, batchID, mtry_ratio,
+                                                     nodesize_ratio, ...) {
         message("  - Current variable: ", current_var, "   ", Sys.time())
 
         train_X_selected_var <- train_samples[c(col_sampleID, col_sampleType, col_batchID, col_order, col_position, var_selected[[current_var]]) ]
@@ -496,7 +498,9 @@ run_TIGER <- function(test_samples, train_samples,
     }, var_selected = var_selected, targetVal_batch = targetVal_batch, rf_hyperparams = rf_hyperparams,
     train_samples = train_samples, test_samples = test_samples, col_sampleID = col_sampleID,
     col_sampleType = col_sampleType, col_batchID = col_batchID, col_order = col_order,
-    col_position = col_position, batchID = batchID, ... = ...)
+    col_position = col_position, batchID = batchID, mtry_ratio = mtry_ratio, nodesize_ratio = nodesize_ratio, ... = ...)
+
+    parallel::stopCluster(cl)
 
     message("+ Merging results...   ", Sys.time())
     check_order <- sapply(res_var[-1], function(x) {
@@ -510,3 +514,16 @@ run_TIGER <- function(test_samples, train_samples,
     test_samples$original_idx <- NULL
     test_samples
 }
+
+train_samples <- cbind(label = "train", do.call("rbind", input_qc_class$qc_train))
+test_samples <- cbind(label = "test", do.call("rbind", input_qc_class$qc_test))
+
+tmp_FF4_refer <- run_TIGER(test_samples = test_samples, train_samples = train_samples,
+                           col_sampleID = "label", col_sampleType = "QC_ID", col_batchID = "Plate_ID",
+                           col_order = NULL, col_position = NULL,
+                           targetVal_external = NULL, targetVal_method = "mean",
+                           targetVal_batch = FALSE, targetVal_removeOutlier = TRUE,
+                           correlation_type = "pcor",
+                           correlation_method = "spearman",
+                           min_var_num = 10, max_var_num = 30,
+                           parallel.cores = 14, output_log = NULL)
