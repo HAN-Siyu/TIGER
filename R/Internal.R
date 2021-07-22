@@ -280,19 +280,26 @@ compute_targetVal <- function(QC_data, col_sampleType, col_batchID,
 
 Internal.compute_errorRatio <- function(train_samples, col_sampleType, targetVal_df, current_var, cl) {
     out <- parallel::parSapply(cl, 1:nrow(train_samples), function(row_idx, train_samples,
-                                                                   col_sampleType, targetVal_df, current_var) {
+                                                                   col_sampleType, targetVal_df,
+                                                                   current_var) {
+
         targetVal <- targetVal_df[row.names(targetVal_df) == train_samples[[col_sampleType]] [row_idx],] [[current_var]]
-        errorRatio <- (train_samples[[current_var]][row_idx] - targetVal) / targetVal
+        rawVal <- train_samples[[current_var]][row_idx]
+        errorRatio <- ifelse(targetVal == 0, 0, (rawVal - targetVal) / targetVal)
+        out <- c(errorRatio = errorRatio, targetVal = targetVal, rawVal = rawVal)
+
     }, train_samples = train_samples, col_sampleType = col_sampleType,
     targetVal_df = targetVal_df, current_var = current_var)
-    out
+
+    out_df <- data.frame(t(out))
 }
 
-Internal.run_ensemble <- function(trainSet, trainSet_raw, trainSet_targetVal,
-                                  testSet = NULL, mtry_ratio = seq(0.2, 0.8, 0.2),
+Internal.run_ensemble <- function(trainSet, testSet,
+                                  mtry_ratio = seq(0.2, 0.8, 0.2),
                                   nodesize_ratio = seq(0.2, 0.8, 0.2),
                                   ...) {
-    if (!is.null(mtry_ratio)) mtry <- round(mtry_ratio * ncol(trainSet))
+
+    if (!is.null(mtry_ratio)) mtry <- round(mtry_ratio * (ncol(trainSet) - 3))
     if (!is.null(nodesize_ratio)) nodesize <- round(nodesize_ratio * nrow(trainSet))
 
     rf_hyperparams <- expand.grid(mtry = unique(mtry),
@@ -308,23 +315,29 @@ Internal.run_ensemble <- function(trainSet, trainSet_raw, trainSet_targetVal,
 
             train_fold     <- trainSet[train_idx,]
             validate_fold  <- trainSet[-train_idx,]
+            train_fold[c("y_target", "y_raw")] <- NULL
 
             fold_formula <- c(formula = as.formula(y ~ .), data = list(train_fold), current_hyperparams)
             RF_fold_mod <- do.call(randomForest::randomForest, fold_formula)
 
             pred_fold <- predict(RF_fold_mod, validate_fold)
 
+            pred_convert <- validate_fold$y_raw / (pred_fold + 1)
+            pred_loss <- abs(pred_convert - validate_fold$y_target) / validate_fold$y_target
+            pred_loss
         })
 
-        base_formula <- c(formula = as.formula(y ~ .), data = list(trainSet), current_hyperparams)
+        mean_loss <- mean(unlist(res_folds), na.rm = T)
+        mod_weight <- 1/exp(mean_loss)
+
+        trainSet[-c("y_target", "y_raw")] <- NULL
+        base_formula <- c(formula = as.formula(y ~ .), data = list(trainSet[!names(trainSet) %in% c("y_target", "y_raw")]),
+                          current_hyperparams)
         RF_base_mod <- do.call(randomForest::randomForest, base_formula)
+        pred_test <- predict(RF_base_mod, testSet)
+        pred_test_convert <- testSet$y_raw / (pred_test + 1)
 
-        if(!is.null(testSet)) {
-            pred_test <- predict(RF_base_mod, testSet)
-            out_pred <- list(pred_train = train_y_pred_rf,
-                             pred_test = test_y_pred_rf)
-        }
-
+        out <- data.frame(mod_weight = mod_weight, pred_test_convert = I(list(pred_test_convert)))
     })
 
 
@@ -371,12 +384,12 @@ run_TIGER <- function(test_samples, train_samples,
     # Target value computation
     if (is.null(targetVal_external)) {
         targetVal_list <- compute_targetVal(QC_data = train_samples[!names(train_samples) %in% c(col_sampleID, col_order, col_position)],
-                                        col_sampleType = col_sampleType,
-                                        col_batchID = col_batchID,
-                                        targetVal_method = targetVal_method,
-                                        targetVal_batch = targetVal_batch,
-                                        targetVal_removeOutlier = targetVal_removeOutlier,
-                                        coerce_numeric = FALSE)
+                                            col_sampleType = col_sampleType,
+                                            col_batchID = col_batchID,
+                                            targetVal_method = targetVal_method,
+                                            targetVal_batch = targetVal_batch,
+                                            targetVal_removeOutlier = targetVal_removeOutlier,
+                                            coerce_numeric = FALSE)
     } else {
         targetVal_list <- targetVal_external
     }
@@ -406,17 +419,19 @@ run_TIGER <- function(test_samples, train_samples,
 
     res_var <- pbapply::pblapply(var_names, function(current_var, var_selected, targetVal_batch, rf_hyperparams,
                                                      train_samples, test_samples, col_sampleID, col_sampleType,
-                                                     col_batchID, col_order, col_position, batchID) {
+                                                     col_batchID, col_order, col_position, batchID, ...) {
 
         train_X_selected_var <- train_samples[c(col_sampleID, col_sampleType, col_batchID, col_order, col_position, var_selected[[current_var]]) ]
+        test_data <- cbind(y_raw = test_samples[[current_var]], test_samples)
 
         if (!targetVal_batch) {
             train_y_all <- Internal.compute_errorRatio(train_samples = train_samples[!names(train_samples) %in% c(col_sampleID, col_batchID, col_order, col_position)],
-                                                   col_sampleType = col_sampleType,
-                                                   targetVal_df = targetVal_list$wholeDataset,
-                                                   current_var = current_var, cl = cl)
+                                                       col_sampleType = col_sampleType,
+                                                       targetVal_df = targetVal_list$wholeDataset,
+                                                       current_var = current_var, cl = cl)
 
-            train_data_all <- cbind(y = train_y_all, train_X_selected_var)
+            train_data_all <- cbind(y_target = train_y_all$targetVal, y_raw = train_y_all$rawVal,
+                                    y = train_y_all$errorRatio, train_X_selected_var)
         }
 
         res_batch <- lapply(batchID, function(current_batch) {
@@ -427,19 +442,28 @@ run_TIGER <- function(test_samples, train_samples,
 
                 train_y <- Internal.compute_errorRatio(train_samples = train_X_batch[!names(train_X_batch) %in% c(col_sampleID, col_batchID, col_order, col_position)],
                                                        col_sampleType = col_sampleType,
-                                                       targetVal_df = targetVal_list$wholeDataset,
+                                                       targetVal_df = targetVal_list[[current_batch]],
                                                        current_var = current_var, cl = cl)
 
-                train_data <- cbind(y = train_y, train_X_selected_var)
+                train_data <- cbind(y_target = train_y$targetVal, y_raw = train_y$rawVal,
+                                    y = train_y$errorRatio, train_X_batch)
             } else {
                 train_data <- train_data_all[train_data_all[[col_batchID]] == current_batch,]
             }
+
+            train_data[c(col_sampleID, col_sampleType, col_batchID)] <- NULL
+
+            Internal.run_ensemble(trainSet = train_data[!names(train_data) %in% c(col_sampleID, col_sampleType, col_batchID)],
+                                  testSet = test_data[test_data[[col_batchID]] == current_batch,],
+                                  mtry_ratio = seq(0.2, 0.8, 0.2),
+                                              nodesize_ratio = seq(0.2, 0.8, 0.2),
+                                              ...)
 
         })
 
     }, var_selected = var_selected, targetVal_batch = targetVal_batch, rf_hyperparams = rf_hyperparams,
     train_samples = train_samples, test_samples = test_samples, col_sampleID = col_sampleID,
     col_sampleType = col_sampleType, col_batchID = col_batchID, col_order = col_order,
-    col_position = col_position, batchID = batchID)
+    col_position = col_position, batchID = batchID, ... = ...)
 
 }
