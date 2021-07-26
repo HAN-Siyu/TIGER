@@ -36,13 +36,13 @@ Internal.remove_NA <- function(input_data_num, data_label = NULL) {
     data_na_sample_idx <- apply(input_data_num, 1, function(x) any(is.na(x)))
     data_na_sample_sum <- sum(data_na_sample_idx)
     if (data_na_sample_sum == 1) {
-        warning(paste0("One sample in ", data_label, " contains NA and has been removed."))
+        warning(paste0("  - One sample in ", data_label, " contains NA and has been removed."))
         input_data_num <- input_data_num[!data_na_sample_idx,]
     } else if (data_na_sample_sum > 1) {
-        warning(paste0(data_na_sample_sum, " samples in ", data_label, " contain NA and have been removed."))
+        warning(paste0("  - ", data_na_sample_sum, " samples in ", data_label, " contain NA and have been removed."))
         input_data_num <- input_data_num[!data_na_sample_idx,]
     }
-    if (nrow(input_data_num) == 0) stop(paste0("Variable selection failed: ", data_label, " contain too many NA!"))
+    if (nrow(input_data_num) == 0) stop(paste0("  - Variable selection failed: ", data_label, " contain too many NA!"))
     input_data_num
 }
 
@@ -169,13 +169,13 @@ select_variable <- function(train_num, test_num = NULL,
     correlation_type   <- match.arg(correlation_type)
     correlation_method <- match.arg(correlation_method)
 
-    test_num <- test_num[!sapply(test_num, anyNA)]
-    test_num <- test_num[sapply(test_num, is.finite)]
-    if (nrow(test_num) < 3) stop("  - Data of test samples have too many NA or infinite values. Maybe you would likt to impute your data!")
-
-    train_num <- train_num[!sapply(train_num, anyNA)]
-    train_num <- train_num[sapply(train_num, is.finite)]
-    if (nrow(train_num) < 3) stop("  - Data of train samples have too many NA or infinite values. Maybe you would likt to impute your data!")
+    # test_num <- test_num[!sapply(test_num, anyNA)]
+    # test_num <- test_num[sapply(test_num, function(x) all(is.finite(x)))]
+    # if (nrow(test_num) < 3) stop("  - Data of test samples have too many NA or infinite values. Maybe you would like to impute your data!")
+    #
+    # train_num <- train_num[!sapply(train_num, anyNA)]
+    # train_num <- train_num[sapply(train_num, function(x) all(is.finite(x)))]
+    # if (nrow(train_num) < 3) stop("  - Data of train samples have too many NA or infinite values. Maybe you would like to impute your data!")
 
     if(coerce_numeric) {
         train_num <- as.data.frame(sapply(train_num, as.numeric))
@@ -286,8 +286,8 @@ compute_targetVal <- function(QC_data, col_sampleType, col_batchID,
     target_values
 }
 
-Internal.compute_errorRatio <- function(train_samples, col_sampleType, targetVal_df, current_var, cl) {
-    out <- parallel::parSapply(cl, 1:nrow(train_samples), function(row_idx, train_samples,
+Internal.compute_errorRatio <- function(train_samples, col_sampleType, targetVal_df, current_var) {
+    out <- sapply(1:nrow(train_samples), function(row_idx, train_samples,
                                                                    col_sampleType, targetVal_df,
                                                                    current_var) {
 
@@ -323,9 +323,11 @@ Internal.run_ensemble <- function(trainSet, testSet,
 
             train_fold     <- trainSet[train_idx,]
             validate_fold  <- trainSet[-train_idx,]
-            train_fold[c("y_target", "y_raw")] <- NULL
+            # train_fold[c("y_target", "y_raw")] <- NULL
 
-            fold_formula <- c(formula = as.formula(y ~ .), data = list(train_fold), current_hyperparams)
+            fold_formula <- c(formula = as.formula(y ~ .),
+                              data = list(train_fold[!names(train_fold) %in% c("y_target", "y_raw")]),
+                              current_hyperparams)
             RF_fold_mod <- do.call(randomForest::randomForest, fold_formula)
 
             pred_fold <- predict(RF_fold_mod, validate_fold)
@@ -341,10 +343,19 @@ Internal.run_ensemble <- function(trainSet, testSet,
         base_formula <- c(formula = as.formula(y ~ .), data = list(trainSet[!names(trainSet) %in% c("y_target", "y_raw")]),
                           current_hyperparams)
         RF_base_mod <- do.call(randomForest::randomForest, base_formula)
-        pred_test <- predict(RF_base_mod, testSet)
+
+        pred_test   <- predict(RF_base_mod, testSet)
         pred_test_convert <- testSet$y_raw / (pred_test + 1)
 
-        out <- list(mod_weight = mod_weight, pred_test_convert = pred_test_convert, RF_base_mod = RF_base_mod)
+        out <- list(mod_weight = mod_weight, pred_test_convert = pred_test_convert)
+        # if (return_base_res) out <- c(out, RF_base_mod = list(RF_base_mod))
+        # if (return_base_res) {
+        #     out <- list(mod_weight = mod_weight, pred_test_convert = pred_test_convert, RF_base_mod = RF_base_mod)
+        #
+        # } else {
+        #     out <- list(mod_weight = mod_weight, pred_test_convert = pred_test_convert)
+        # }
+        out
     })
     mod_weights <- sapply(pred_ensemble, function(x) x$mod_weight)
     mod_weights_norm <- mod_weights / sum(mod_weights, na.rm = TRUE)
@@ -369,10 +380,9 @@ run_TIGER <- function(test_samples, train_samples,
                       min_var_num = 10, max_var_num = 30,
                       mtry_ratio = seq(0.2, 0.8, 0.2),
                       nodesize_ratio = seq(0.2, 0.8, 0.2),
-                      ..., parallel.cores = 2, output_log = NULL) {
+                      ..., parallel.cores = 2, output_log = NA) {
 
     message("+ Initialising...   ", Sys.time())
-    cl <- parallel::makeCluster(parallel.cores, outfile = output_log)
 
     # zero values?
     # Inf values?
@@ -428,10 +438,11 @@ run_TIGER <- function(test_samples, train_samples,
     train_num <- train_samples[!names(train_samples) %in% c(col_sampleID, col_sampleType, col_batchID, col_order, col_position)]
     test_num <- test_samples[!names(test_samples) %in% c(col_sampleID, col_sampleType, col_batchID, col_order, col_position)]
 
-    if (!all(var_names == names(train_num))) stop("  - Varibale names cannot match!")
-    if (!all(var_names == names(test_num)))  stop("  - Varibale names cannot match!")
+    if (!all(var_names == names(train_num))) stop("  - Varibale names in the train and test samples cannot match!")
+    if (!all(var_names == names(test_num)))  stop("  - Varibale names in the train and test samples cannot match!")
 
     # Variable selection
+    cl <- parallel::makeCluster(parallel.cores, outfile = output_log)
     message("+ Selecting highly-correlated variables...   ", Sys.time())
     var_selected <- select_variable(train_num = train_num,
                                     test_num = test_num,
@@ -441,26 +452,32 @@ run_TIGER <- function(test_samples, train_samples,
                                     coerce_numeric = TRUE,
                                     parallel.cores = NULL, cl = cl, output_log = output_log)
 
-    pbapply::pboptions(type = "timer", style = 1, char = "=")
+    pbapply::pboptions(type = "timer", style = 3, char = "=")
     message("+ Data correction started.   ", Sys.time())
 
     # Original sample order backup
     test_samples <- cbind(original_idx = 1:nrow(test_samples), test_samples)
+    parallel::clusterExport(cl = cl, varlist = c("Internal.compute_errorRatio", "Internal.run_ensemble"))
 
-    res_var <- pbapply::pblapply(var_names, function(current_var, var_selected, targetVal_batch, rf_hyperparams,
+    res_var <- pbapply::pblapply(var_names, function(current_var, var_selected, targetVal_batch,
                                                      train_samples, test_samples, col_sampleID, col_sampleType,
                                                      col_batchID, col_order, col_position, batchID, mtry_ratio,
                                                      nodesize_ratio, ...) {
-        message("  - Current variable: ", current_var, "   ", Sys.time())
+        # message("  - Current variable: ", current_var, "   ", Sys.time())
 
-        train_X_selected_var <- train_samples[c(col_sampleID, col_sampleType, col_batchID, col_order, col_position, var_selected[[current_var]]) ]
+        train_X_selected_var <- train_samples[c(col_sampleID, col_sampleType, col_batchID,
+                                                col_order, col_position, var_selected[[current_var]]) ]
+
+        train_X_selected_var <- train_X_selected_var[!apply(train_X_selected_var, 1, anyNA),]
+        if (any(table(train_X_selected_var[[col_batchID]]) < 5)) stop("  - Your train data contain too many NA. Maybe you would like to impute your data!")
+
         test_data <- cbind(y_raw = test_samples[[current_var]], test_samples)
 
         if (!targetVal_batch) {
             train_y_all <- Internal.compute_errorRatio(train_samples = train_samples[!names(train_samples) %in% c(col_sampleID, col_batchID, col_order, col_position)],
                                                        col_sampleType = col_sampleType,
                                                        targetVal_df = targetVal_list$wholeDataset,
-                                                       current_var = current_var, cl = cl)
+                                                       current_var = current_var)
 
             train_data_all <- cbind(y_target = train_y_all$targetVal, y_raw = train_y_all$rawVal,
                                     y = train_y_all$errorRatio, train_X_selected_var)
@@ -483,22 +500,26 @@ run_TIGER <- function(test_samples, train_samples,
                 train_data <- train_data_all[train_data_all[[col_batchID]] == current_batch,]
             }
 
-            train_data[c(col_sampleID, col_sampleType, col_batchID)] <- NULL
+            trainSet <- train_data[!names(train_data) %in% c(col_sampleID, col_sampleType, col_batchID)]
+            testSet  <- test_data[test_data[[col_batchID]] == current_batch,]
 
-            var_pred <- Internal.run_ensemble(trainSet = train_data[!names(train_data) %in% c(col_sampleID, col_sampleType, col_batchID)],
-                                              testSet  = test_data[test_data[[col_batchID]] == current_batch,], mtry_ratio = seq(0.2, 0.8, 0.2),
-                                              nodesize_ratio = seq(0.2, 0.8, 0.2), ... = ..., return_base_res = FALSE)
-
+            var_pred <- Internal.run_ensemble(trainSet = trainSet, testSet  = testSet,
+                                              mtry_ratio = seq(0.2, 0.8, 0.2),
+                                              nodesize_ratio = seq(0.2, 0.8, 0.2),
+                                              ... = ..., return_base_res = FALSE)
+            names(var_pred) <- testSet$original_idx
+            var_pred
         })
         res_batch <- do.call("c", res_batch_list)
-        res_batch_df <- data.frame(res_batch)
-        res_batch_df <- res_batch_df[order(as.numeric(row.names(res_batch_df))),,drop = FALSE]
+        res_batch_order <- res_batch[order(as.numeric(names(res_batch)))]
+        res_batch_df <- data.frame(res_batch_order)
         names(res_batch_df) <- current_var
         res_batch_df
-    }, var_selected = var_selected, targetVal_batch = targetVal_batch, rf_hyperparams = rf_hyperparams,
+    }, var_selected = var_selected, targetVal_batch = targetVal_batch,
     train_samples = train_samples, test_samples = test_samples, col_sampleID = col_sampleID,
     col_sampleType = col_sampleType, col_batchID = col_batchID, col_order = col_order,
-    col_position = col_position, batchID = batchID, mtry_ratio = mtry_ratio, nodesize_ratio = nodesize_ratio, ... = ...)
+    col_position = col_position, batchID = batchID, mtry_ratio = mtry_ratio,
+    nodesize_ratio = nodesize_ratio, ... = ..., cl = cl)
 
     parallel::stopCluster(cl)
 
@@ -506,24 +527,45 @@ run_TIGER <- function(test_samples, train_samples,
     check_order <- sapply(res_var[-1], function(x) {
         any(row.names(x) != row.names(res_var[[1]]))
     })
-    if (any(check_order)) stop("Error in merging data!")
+    if (any(check_order)) stop("Error occurs when merging data!")
 
     res_var_df <- do.call("cbind", res_var)
 
     test_samples[names(res_var_df)] <- res_var_df
     test_samples$original_idx <- NULL
+    message("+ Completed.   ", Sys.time())
     test_samples
 }
 
+load("/Volumes/Work/Projects/Helmholtz/Helmholtz_normaliation/Data/norm_RF/qc_class_refer_forEvalCV.RData")
+
 train_samples <- cbind(label = "train", do.call("rbind", input_qc_class$qc_train))
-test_samples <- cbind(label = "test", do.call("rbind", input_qc_class$qc_test))
+test_samples <- do.call("rbind", input_qc_class$qc_test)
+test_samples <- test_samples[test_samples$QC_ID %in% c("QC Level 1", "QC Level 2", "QC Level 3"),]
+test_samples <- cbind(label = paste0("test.", 1:nrow(test_samples)), test_samples)
+row.names(test_samples) <- test_samples$label
+
+train_samples$Well_Position <- NULL
+train_samples$Injection_Order <- NULL
+test_samples$Well_Position <- NULL
+test_samples$Injection_Order <- NULL
+
+table(names(test_samples) == names(train_samples))
 
 tmp_FF4_refer <- run_TIGER(test_samples = test_samples, train_samples = train_samples,
                            col_sampleID = "label", col_sampleType = "QC_ID", col_batchID = "Plate_ID",
                            col_order = NULL, col_position = NULL,
                            targetVal_external = NULL, targetVal_method = "mean",
                            targetVal_batch = FALSE, targetVal_removeOutlier = TRUE,
-                           correlation_type = "pcor",
+                           correlation_type = "cor",
                            correlation_method = "spearman",
                            min_var_num = 10, max_var_num = 30,
-                           parallel.cores = 14, output_log = NULL)
+                           parallel.cores = parallel::detectCores() - 2, output_log = "")
+
+tmp_FF4_refer$label <- paste(tmp_FF4_refer$QC_ID, tmp_FF4_refer$Plate_ID, 1:nrow(tmp_FF4_refer), sep = "_")
+
+write.table(t(tmp_FF4_refer[-c(2,3)]), file = paste0("normalized by - TIGER_deployed.csv"),
+            row.names = T, col.names = F, quote = F, sep = ",")
+
+tmp_list <- split(tmp_FF4_refer, f = list(tmp_FF4_refer$QC_ID))
+compute_RSD(tmp_list$`QC Level 1`$C0)
