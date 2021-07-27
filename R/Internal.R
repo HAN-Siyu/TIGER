@@ -55,9 +55,12 @@ Internal.compute_cor <- function(train_num, test_num = NULL,
 
     if (correlation_type == "pcor") {
         train_cor <- data.frame(ppcor::pcor(train_num_noNA, method = correlation_method)$estimate)
-
+        names(train_cor) <- names(train_num_noNA)
+        row.names(train_cor) <- names(train_num_noNA)
         if (!is.null(test_num)) {
             test_cor <- data.frame(ppcor::pcor(test_num_noNA, method = correlation_method)$estimate)
+            names(test_cor) <- names(test_num_noNA)
+            row.names(test_cor) <- names(test_num_noNA)
         } else test_cor <- NULL
 
     } else {
@@ -177,6 +180,15 @@ select_variable <- function(train_num, test_num = NULL,
     # train_num <- train_num[sapply(train_num, function(x) all(is.finite(x)))]
     # if (nrow(train_num) < 3) stop("  - Data of train samples have too many NA or infinite values. Maybe you would like to impute your data!")
 
+    min_var_num <- ifelse(is.null(min_var_num), 1, min_var_num)
+    max_var_num <- ifelse(is.null(max_var_num), ncol(train_num), max_var_num)
+
+    min_var_num <- as.integer(min_var_num)
+    max_var_num <- as.integer(max_var_num)
+
+    if (min_var_num < 1) stop("  - min_var_num must be a positive integer!")
+    if (max_var_num > ncol(train_num)) stop("  - max_var_num cannot be greater than variable number!")
+
     if(coerce_numeric) {
         train_num <- as.data.frame(sapply(train_num, as.numeric))
         idx_NA <- sapply(train_num, function(x) {
@@ -199,15 +211,6 @@ select_variable <- function(train_num, test_num = NULL,
     if (!is.null(test_num)) {
         if (any(names(train_num) != names(test_num))) stop("  - Variables in training and test data cannot match!")
     }
-
-    min_var_num <- ifelse(is.null(min_var_num), 1, min_var_num)
-    max_var_num <- ifelse(is.null(max_var_num), ncol(train_num), max_var_num)
-
-    min_var_num <- as.integer(min_var_num)
-    max_var_num <- as.integer(max_var_num)
-
-    if (min_var_num < 1) stop("  - min_var_num must be a positive integer!")
-    if (max_var_num > ncol(train_num)) stop("  - max_var_num cannot be greater than variable number!")
 
     stop_cl <- FALSE
     if (is.null(cl)) {
@@ -442,6 +445,7 @@ run_TIGER <- function(test_samples, train_samples,
     if (!all(var_names == names(test_num)))  stop("  - Varibale names in the train and test samples cannot match!")
 
     # Variable selection
+    message("+ Creating clusters...   ", Sys.time())
     cl <- parallel::makeCluster(parallel.cores, outfile = output_log)
     message("+ Selecting highly-correlated variables...   ", Sys.time())
     var_selected <- select_variable(train_num = train_num,
@@ -557,14 +561,14 @@ tmp_FF4_refer <- run_TIGER(test_samples = test_samples, train_samples = train_sa
                            col_order = NULL, col_position = NULL,
                            targetVal_external = NULL, targetVal_method = "mean",
                            targetVal_batch = FALSE, targetVal_removeOutlier = TRUE,
-                           correlation_type = "cor",
+                           correlation_type = "pcor",
                            correlation_method = "spearman",
                            min_var_num = 10, max_var_num = 30,
                            parallel.cores = parallel::detectCores() - 2, output_log = "")
 
 tmp_FF4_refer$label <- paste(tmp_FF4_refer$QC_ID, tmp_FF4_refer$Plate_ID, 1:nrow(tmp_FF4_refer), sep = "_")
 
-write.table(t(tmp_FF4_refer[-c(2,3)]), file = paste0("normalized by - TIGER_deployed.csv"),
+write.table(t(tmp_FF4_refer[-c(2,3)]), file = paste0("normalized by - TIGER_mean_pcorSpearman.csv"),
             row.names = T, col.names = F, quote = F, sep = ",")
 
 tmp_list <- split(tmp_FF4_refer, f = list(tmp_FF4_refer$QC_ID))
