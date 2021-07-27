@@ -250,6 +250,7 @@ compute_targetVal <- function(QC_data, col_sampleType, col_batchID,
                               targetVal_batch = FALSE,
                               targetVal_removeOutlier = TRUE,
                               coerce_numeric = FALSE) {
+
     targetVal_method   <- match.arg(targetVal_method)
 
     sampleID <- as.factor(QC_data[[col_sampleType]])
@@ -376,16 +377,20 @@ Internal.run_ensemble <- function(trainSet, testSet,
 run_TIGER <- function(test_samples, train_samples,
                       col_sampleID, col_sampleType, col_batchID,
                       col_order = NULL, col_position = NULL,
-                      targetVal_external = NULL, targetVal_method = c("median", "mean"),
+                      targetVal_external = NULL, targetVal_method = c("mean", "median"),
                       targetVal_batch = FALSE, targetVal_removeOutlier = TRUE,
-                      correlation_type = c("pcor", "cor"),
-                      correlation_method = c("spearman", "pearson"),
+                      correlation_type = c("cor", "pcor"),
+                      correlation_method = c("pearson", "spearman"),
                       min_var_num = 10, max_var_num = 30,
                       mtry_ratio = seq(0.2, 0.8, 0.2),
                       nodesize_ratio = seq(0.2, 0.8, 0.2),
                       ..., parallel.cores = 2, output_log = NA) {
 
     message("+ Initialising...   ", Sys.time())
+
+    targetVal_method   <- match.arg(targetVal_method)
+    correlation_type   <- match.arg(correlation_type)
+    correlation_method <- match.arg(correlation_method)
 
     # zero values?
     # Inf values?
@@ -540,36 +545,3 @@ run_TIGER <- function(test_samples, train_samples,
     message("+ Completed.   ", Sys.time())
     test_samples
 }
-
-load("/Volumes/Work/Projects/Helmholtz/Helmholtz_normaliation/Data/norm_RF/qc_class_refer_forEvalCV.RData")
-
-train_samples <- cbind(label = "train", do.call("rbind", input_qc_class$qc_train))
-test_samples <- do.call("rbind", input_qc_class$qc_test)
-test_samples <- test_samples[test_samples$QC_ID %in% c("QC Level 1", "QC Level 2", "QC Level 3"),]
-test_samples <- cbind(label = paste0("test.", 1:nrow(test_samples)), test_samples)
-row.names(test_samples) <- test_samples$label
-
-train_samples$Well_Position <- NULL
-train_samples$Injection_Order <- NULL
-test_samples$Well_Position <- NULL
-test_samples$Injection_Order <- NULL
-
-table(names(test_samples) == names(train_samples))
-
-tmp_FF4_refer <- run_TIGER(test_samples = test_samples, train_samples = train_samples,
-                           col_sampleID = "label", col_sampleType = "QC_ID", col_batchID = "Plate_ID",
-                           col_order = NULL, col_position = NULL,
-                           targetVal_external = NULL, targetVal_method = "mean",
-                           targetVal_batch = FALSE, targetVal_removeOutlier = TRUE,
-                           correlation_type = "pcor",
-                           correlation_method = "spearman",
-                           min_var_num = 10, max_var_num = 30,
-                           parallel.cores = parallel::detectCores() - 2, output_log = "")
-
-tmp_FF4_refer$label <- paste(tmp_FF4_refer$QC_ID, tmp_FF4_refer$Plate_ID, 1:nrow(tmp_FF4_refer), sep = "_")
-
-write.table(t(tmp_FF4_refer[-c(2,3)]), file = paste0("normalized by - TIGER_mean_pcorSpearman.csv"),
-            row.names = T, col.names = F, quote = F, sep = ",")
-
-tmp_list <- split(tmp_FF4_refer, f = list(tmp_FF4_refer$QC_ID))
-compute_RSD(tmp_list$`QC Level 1`$C0)
