@@ -290,7 +290,8 @@ compute_targetVal <- function(QC_data, col_sampleType, col_batchID,
     target_values
 }
 
-Internal.compute_errorRatio <- function(train_samples, col_sampleType, targetVal_df, current_var) {
+Internal.compute_errorRatio <- function(train_samples, col_sampleType,
+                                        targetVal_df, current_var) {
     out <- sapply(1:nrow(train_samples), function(row_idx, train_samples,
                                                                    col_sampleType, targetVal_df,
                                                                    current_var) {
@@ -332,7 +333,7 @@ Internal.run_ensemble <- function(trainSet, testSet,
             fold_formula <- c(formula = as.formula(y ~ .),
                               data = list(train_fold[!names(train_fold) %in% c("y_target", "y_raw")]),
                               current_hyperparams)
-            RF_fold_mod <- do.call(randomForest::randomForest, fold_formula)
+            RF_fold_mod  <- do.call(randomForest::randomForest, fold_formula)
 
             pred_fold <- predict(RF_fold_mod, validate_fold)
 
@@ -366,6 +367,7 @@ Internal.run_ensemble <- function(trainSet, testSet,
 
     pred_test <- sapply(pred_ensemble, function(x) x$pred_test_convert)
     pred_norm <- apply(pred_test, 1, function(x) sum(x * mod_weights_norm, na.rm = TRUE))
+
     if (return_base_res) {
         output <- list(pred_norm = pred_norm, base_res = pred_ensemble, base_weights = mod_weights_norm)
     } else {
@@ -498,13 +500,13 @@ run_TIGER <- function(test_samples, train_samples,
             if (targetVal_batch) {
                 train_X_batch <- train_X_selected_var[train_X_selected_var[[col_batchID]] == current_batch,]
 
-                train_y <- Internal.compute_errorRatio(train_samples = train_X_batch[!names(train_X_batch) %in% c(col_sampleID, col_batchID, col_order, col_position)],
-                                                       col_sampleType = col_sampleType,
-                                                       targetVal_df = targetVal_list[[current_batch]],
-                                                       current_var = current_var, cl = cl)
+                train_y_batch <- Internal.compute_errorRatio(train_samples = train_X_batch[!names(train_X_batch) %in% c(col_sampleID, col_batchID, col_order, col_position)],
+                                                             col_sampleType = col_sampleType,
+                                                             targetVal_df = targetVal_list[[current_batch]],
+                                                             current_var = current_var)
 
-                train_data <- cbind(y_target = train_y$targetVal, y_raw = train_y$rawVal,
-                                    y = train_y$errorRatio, train_X_batch)
+                train_data <- cbind(y_target = train_y_batch$targetVal, y_raw = train_y_batch$rawVal,
+                                    y = train_y_batch$errorRatio, train_X_batch)
             } else {
                 train_data <- train_data_all[train_data_all[[col_batchID]] == current_batch,]
             }
@@ -512,10 +514,17 @@ run_TIGER <- function(test_samples, train_samples,
             trainSet <- train_data[!names(train_data) %in% c(col_sampleID, col_sampleType, col_batchID)]
             testSet  <- test_data[test_data[[col_batchID]] == current_batch,]
 
-            var_pred <- Internal.run_ensemble(trainSet = trainSet, testSet  = testSet,
+            var_pred <- Internal.run_ensemble(trainSet = trainSet, testSet = testSet,
                                               mtry_ratio = seq(0.2, 0.8, 0.2),
                                               nodesize_ratio = seq(0.2, 0.8, 0.2),
                                               ... = ..., return_base_res = FALSE)
+
+            if (targetVal_batch) {
+                test_targetVal_all   <- do.call(targetVal_method, list(test_data$y_raw, na.rm = TRUE))
+                test_targetVal_batch <- do.call(targetVal_method, list(testSet$y_raw,   na.rm = TRUE))
+                var_pred <- var_pred * test_targetVal_all / test_targetVal_batch
+            }
+
             names(var_pred) <- testSet$original_idx
             var_pred
         })
