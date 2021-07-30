@@ -32,8 +32,8 @@ Internal.boxplot.stats <- function(x, coef = 1.5, do.conf = TRUE, do.out = TRUE)
          iqr = iqr, lower_limit = lower_limit, upper_limit = upper_limit)
 }
 
-Internal.remove_NA <- function(input_data_num, data_label = NULL) {
-    data_na_sample_idx <- apply(input_data_num, 1, function(x) any(is.na(x)))
+Internal.remove_NA <- function(input_data_num, data_label = NULL, cl) {
+    data_na_sample_idx <- parallel::parApply(cl, input_data_num, 1, function(x) any(is.na(x)))
     data_na_sample_sum <- sum(data_na_sample_idx)
     if (data_na_sample_sum == 1) {
         warning(paste0("  - One sample in ", data_label, " contains NA and has been removed."))
@@ -46,13 +46,15 @@ Internal.remove_NA <- function(input_data_num, data_label = NULL) {
     input_data_num
 }
 
-Internal.compute_cor <- function(train_num, test_num = NULL,
+Internal.compute_cor <- function(train_num, test_num = NULL, cl,
                                  correlation_type = c("pcor", "cor"),
                                  correlation_method = c("spearman", "pearson")) {
 
-    train_num_noNA <- Internal.remove_NA(train_num, data_label = "training data")
-    if (!is.null(test_num)) test_num_noNA <- Internal.remove_NA(test_num, data_label = "test data")
+    message("  - Checking missing values...")
+    train_num_noNA <- Internal.remove_NA(train_num, data_label = "training data", cl = cl)
+    if (!is.null(test_num)) test_num_noNA <- Internal.remove_NA(test_num, data_label = "test data", cl = cl)
 
+    message("  - Computing correlation coefficients...")
     if (correlation_type == "pcor") {
         train_cor <- data.frame(ppcor::pcor(train_num_noNA, method = correlation_method)$estimate)
         names(train_cor) <- names(train_num_noNA)
@@ -78,9 +80,10 @@ Internal.compute_cor <- function(train_num, test_num = NULL,
 Internal.select_variable <- function(cor_info, min_var_num = NULL,
                                      max_var_num = NULL, cl) {
 
-    selected_var <- parallel::parLapply(cl, cor_info$variable_name, function(input_one_variable_name,
-                                                                             train_cor, test_cor,
-                                                                             min_var_num, max_var_num) {
+    pbapply::pboptions(type = "timer", style = 3, char = "=")
+    selected_var <- pbapply::pblapply(cor_info$variable_name, function(input_one_variable_name,
+                                                                       train_cor, test_cor,
+                                                                       min_var_num, max_var_num) {
 
         correlated_train <- abs(train_cor[input_one_variable_name])
         correlated_train <- correlated_train[order(correlated_train[[1]], decreasing = TRUE),,drop = FALSE]
@@ -156,7 +159,7 @@ Internal.select_variable <- function(cor_info, min_var_num = NULL,
         selected_var_name
     },
     train_cor = cor_info$train_cor, test_cor = cor_info$test_cor,
-    min_var_num = min_var_num, max_var_num = max_var_num)
+    min_var_num = min_var_num, max_var_num = max_var_num, cl = cl)
 
     names(selected_var) <- cor_info$variable_name
     selected_var
@@ -167,7 +170,7 @@ select_variable <- function(train_num, test_num = NULL,
                             correlation_method = c("spearman", "pearson"),
                             min_var_num = NULL, max_var_num = NULL,
                             coerce_numeric = FALSE,
-                            parallel.cores = 2, cl = NULL, output_log = NULL) {
+                            parallel.cores = 2, cl = NULL) {
 
     correlation_type   <- match.arg(correlation_type)
     correlation_method <- match.arg(correlation_method)
@@ -214,14 +217,15 @@ select_variable <- function(train_num, test_num = NULL,
 
     stop_cl <- FALSE
     if (is.null(cl)) {
-        cl <- parallel::makeCluster(parallel.cores, outfile = output_log)
+        cl <- parallel::makeCluster(parallel.cores)
         stop_cl <- TRUE
     }
+    if (ncol(train_num) > 500) message("  - It may take some time to process large datasets.")
 
     cor_info <- Internal.compute_cor(train_num = train_num, test_num = test_num,
                                      correlation_type = correlation_type,
-                                     correlation_method = correlation_method)
-
+                                     correlation_method = correlation_method, cl = cl)
+    message("  - Selecting variables...")
     selected_var <- Internal.select_variable(cor_info = cor_info, min_var_num = min_var_num,
                                              max_var_num = max_var_num, cl = cl)
 
@@ -293,8 +297,8 @@ compute_targetVal <- function(QC_data, col_sampleType, col_batchID,
 Internal.compute_errorRatio <- function(train_samples, col_sampleType,
                                         targetVal_df, current_var) {
     out <- sapply(1:nrow(train_samples), function(row_idx, train_samples,
-                                                                   col_sampleType, targetVal_df,
-                                                                   current_var) {
+                                                  col_sampleType, targetVal_df,
+                                                  current_var) {
 
         targetVal <- targetVal_df[row.names(targetVal_df) == train_samples[[col_sampleType]] [row_idx],] [[current_var]]
         rawVal <- train_samples[[current_var]][row_idx]
@@ -386,7 +390,7 @@ run_TIGER <- function(test_samples, train_samples,
                       min_var_num = 10, max_var_num = 30,
                       mtry_ratio = seq(0.2, 0.8, 0.2),
                       nodesize_ratio = seq(0.2, 0.8, 0.2),
-                      ..., parallel.cores = 2, output_log = NA) {
+                      ..., parallel.cores = 2) {
 
     message("+ Initialising...   ", Sys.time())
 
@@ -453,7 +457,7 @@ run_TIGER <- function(test_samples, train_samples,
 
     # Variable selection
     message("+ Creating clusters...   ", Sys.time())
-    cl <- parallel::makeCluster(parallel.cores, outfile = output_log)
+    cl <- parallel::makeCluster(parallel.cores)
     message("+ Selecting highly-correlated variables...   ", Sys.time())
     var_selected <- select_variable(train_num = train_num,
                                     test_num = test_num,
@@ -461,7 +465,7 @@ run_TIGER <- function(test_samples, train_samples,
                                     correlation_method = correlation_method,
                                     min_var_num = min_var_num, max_var_num = max_var_num,
                                     coerce_numeric = TRUE,
-                                    parallel.cores = NULL, cl = cl, output_log = output_log)
+                                    parallel.cores = NULL, cl = cl)
 
     pbapply::pboptions(type = "timer", style = 3, char = "=")
     message("+ Data correction started.   ", Sys.time())
