@@ -79,10 +79,17 @@ Internal.compute_cor <- function(train_num, test_num = NULL,
 
 Internal.select_variable <- function(cor_info, min_var_num = NULL,
                                      max_var_num = NULL) {
-    selected_var <- lapply(cor_info$variable_name, function(input_one_variable_name,
-                                                            train_cor, test_cor,
-                                                            min_var_num, max_var_num) {
 
+    variable_name <- cor_info$variable_name
+    pb <- pbapply::timerProgressBar(min = 0, max = length(variable_name),
+                                    initial = 0, style = 3, width = 70,
+                                    min_time = 30)
+    selected_var <- lapply(1:length(variable_name), function(var_idx,
+                                                             variable_name,
+                                                             train_cor, test_cor,
+                                                             min_var_num, max_var_num) {
+        pbapply::setTimerProgressBar(pb, var_idx)
+        input_one_variable_name <- variable_name[[var_idx]]
         correlated_train <- abs(train_cor[input_one_variable_name])
         correlated_train <- correlated_train[order(correlated_train[[1]], decreasing = TRUE),,drop = FALSE]
 
@@ -156,10 +163,11 @@ Internal.select_variable <- function(cor_info, min_var_num = NULL,
         }
         selected_var_name
     },
+    variable_name = variable_name,
     train_cor = cor_info$train_cor, test_cor = cor_info$test_cor,
     min_var_num = min_var_num, max_var_num = max_var_num)
-
-    names(selected_var) <- cor_info$variable_name
+    pbapply::closepb(pb)
+    names(selected_var) <- variable_name
     selected_var
 }
 
@@ -223,7 +231,8 @@ select_variable <- function(train_num, test_num = NULL,
                                      correlation_type = correlation_type,
                                      correlation_method = correlation_method)
     message("  - Selecting variables...")
-    selected_var <- Internal.select_variable(cor_info = cor_info, min_var_num = min_var_num,
+    selected_var <- Internal.select_variable(cor_info = cor_info,
+                                             min_var_num = min_var_num,
                                              max_var_num = max_var_num)
 
     # if (stop_cl) {
@@ -462,8 +471,7 @@ run_TIGER <- function(test_samples, train_samples,
                                     correlation_method = correlation_method,
                                     min_var_num = min_var_num, max_var_num = max_var_num,
                                     coerce_numeric = TRUE)
-
-    pbapply::pboptions(type = "timer", style = 3, char = "=")
+    pbapply::pboptions(type = "timer", style = 3, char = "=", txt.width = 70)
     message("+ Data correction started.   ", Sys.time())
 
     # Original sample order backup
