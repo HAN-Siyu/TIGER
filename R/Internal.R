@@ -55,7 +55,7 @@ Internal.compute_cor <- function(train_num, test_num = NULL,
     if (!is.null(test_num)) test_num_noNA <- Internal.remove_NA(test_num, data_label = "test data")
 
     message("  - Computing correlation coefficients...")
-    if (ncol(train_num_noNA) > 500) message("  - Your data have more than 500 variables. It may take some time to process large datasets.")
+    if (ncol(train_num_noNA) > 500) message("    Your data have more than 500 variables. It may take some time to process large datasets.")
 
     if (correlation_type == "pcor") {
         train_cor <- data.frame(ppcor::pcor(train_num_noNA, method = correlation_method)$estimate)
@@ -85,7 +85,7 @@ Internal.select_variable <- function(cor_info, min_var_num = NULL,
     variable_name <- cor_info$variable_name
     pb <- pbapply::timerProgressBar(min = 0, max = length(variable_name),
                                     initial = 0, style = 3, width = 70,
-                                    min_time = 30)
+                                    min_time = 10)
     selected_var <- lapply(1:length(variable_name), function(var_idx,
                                                              variable_name,
                                                              train_cor, test_cor,
@@ -259,7 +259,7 @@ Internal.compute_targetVal <- function(input_col, targetVal_method = c("median",
 compute_targetVal <- function(QC_data, col_sampleType, col_batchID,
                               targetVal_method = c("median", "mean"),
                               targetVal_batch = FALSE,
-                              targetVal_removeOutlier = TRUE,
+                              targetVal_removeOutlier = !targetVal_batch,
                               coerce_numeric = FALSE) {
 
     targetVal_method   <- match.arg(targetVal_method)
@@ -303,6 +303,7 @@ compute_targetVal <- function(QC_data, col_sampleType, col_batchID,
 
 Internal.compute_errorRatio <- function(train_samples, col_sampleType,
                                         targetVal_df, current_var) {
+
     out <- sapply(1:nrow(train_samples), function(row_idx, train_samples,
                                                   col_sampleType, targetVal_df,
                                                   current_var) {
@@ -391,7 +392,7 @@ run_TIGER <- function(test_samples, train_samples,
                       col_sampleID, col_sampleType, col_batchID,
                       col_order = NULL, col_position = NULL,
                       targetVal_external = NULL, targetVal_method = c("mean", "median"),
-                      targetVal_batch = FALSE, targetVal_removeOutlier = TRUE,
+                      targetVal_batch = FALSE, targetVal_removeOutlier = !targetVal_batch,
                       correlation_type = c("cor", "pcor"),
                       correlation_method = c("pearson", "spearman"),
                       min_var_num = 10, max_var_num = 30,
@@ -454,7 +455,7 @@ run_TIGER <- function(test_samples, train_samples,
         targetVal_list <- targetVal_external
     }
 
-    message("+ Checking variable names...   ", Sys.time())
+    message("  - Checking variable names...")
     var_names <- names(targetVal_list[[1]])
     train_num <- train_samples[!names(train_samples) %in% c(col_sampleID, col_sampleType, col_batchID, col_order, col_position)]
     test_num <- test_samples[!names(test_samples) %in% c(col_sampleID, col_sampleType, col_batchID, col_order, col_position)]
@@ -463,8 +464,6 @@ run_TIGER <- function(test_samples, train_samples,
     if (!all(var_names == names(test_num)))  stop("  - Varibale names in the train and test samples cannot match!")
 
     # Variable selection
-    message("+ Creating clusters...   ", Sys.time())
-    cl <- parallel::makeCluster(parallel.cores)
     message("+ Selecting highly-correlated variables...   ", Sys.time())
     var_selected <- select_variable(train_num = train_num,
                                     test_num = test_num,
@@ -472,13 +471,17 @@ run_TIGER <- function(test_samples, train_samples,
                                     correlation_method = correlation_method,
                                     min_var_num = min_var_num, max_var_num = max_var_num,
                                     coerce_numeric = TRUE)
-    pbapply::pboptions(type = "timer", style = 3, char = "=", txt.width = 70)
+
     message("+ Data correction started.   ", Sys.time())
+    message("  - Creating clusters...")
+    cl <- parallel::makeCluster(parallel.cores)
+    parallel::clusterExport(cl = cl, varlist = c("Internal.compute_errorRatio", "Internal.run_ensemble"))
+    pbapply::pboptions(type = "timer", style = 3, char = "=", txt.width = 70)
 
     # Original sample order backup
     test_samples <- cbind(original_idx = 1:nrow(test_samples), test_samples)
-    parallel::clusterExport(cl = cl, varlist = c("Internal.compute_errorRatio", "Internal.run_ensemble"))
 
+    message("  - Correcting data...")
     res_var <- pbapply::pblapply(var_names, function(current_var, var_selected, targetVal_batch,
                                                      train_samples, test_samples, col_sampleID, col_sampleType,
                                                      col_batchID, col_order, col_position, batchID, mtry_ratio,
@@ -551,7 +554,7 @@ run_TIGER <- function(test_samples, train_samples,
 
     parallel::stopCluster(cl)
 
-    message("+ Merging results...   ", Sys.time())
+    message("  - Merging results...")
     check_order <- sapply(res_var[-1], function(x) {
         any(row.names(x) != row.names(res_var[[1]]))
     })
