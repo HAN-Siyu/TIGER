@@ -200,7 +200,7 @@ Internal.select_variable <- function(cor_info, min_var_num = NULL,
 
 select_variable <- function(train_num, test_num = NULL,
                             train_batchID = NULL, test_batchID = NULL,
-                            batch_wise = FALSE,
+                            batchWise = FALSE,
                             correlation_type = c("pcor", "cor"),
                             correlation_method = c("spearman", "pearson"),
                             min_var_num = NULL, max_var_num = NULL,
@@ -241,7 +241,7 @@ select_variable <- function(train_num, test_num = NULL,
         if (any(names(train_num) != names(test_num))) stop("  - Variables in training and test data cannot match!")
     }
 
-    if (batch_wise) {
+    if (batchWise) {
         train_num_list <- split(train_num, f = train_batchID)
         test_num_list  <- split(test_num,  f = test_batchID)
 
@@ -300,8 +300,8 @@ Internal.compute_targetVal <- function(input_col, targetVal_method = c("median",
 
 compute_targetVal <- function(QC_data, col_sampleType, col_batchID,
                               targetVal_method = c("median", "mean"),
-                              batch_wise = FALSE,
-                              targetVal_removeOutlier = !batch_wise,
+                              batchWise = FALSE,
+                              targetVal_removeOutlier = !batchWise,
                               coerce_numeric = FALSE) {
 
     targetVal_method   <- match.arg(targetVal_method)
@@ -320,7 +320,7 @@ compute_targetVal <- function(QC_data, col_sampleType, col_batchID,
         if (!all(sapply(data_numeric, is.numeric))) stop("The values of the input dataset (except sampleType and batchID) should be numeric!")
     }
 
-    if (batch_wise) {
+    if (batchWise) {
         target_values <- aggregate(data_numeric, by = list(batch = batchID, sample = sampleID),
                                    FUN = Internal.compute_targetVal, targetVal_method = targetVal_method,
                                    targetVal_removeOutlier = targetVal_removeOutlier)
@@ -430,9 +430,10 @@ run_TIGER <- function(test_samples, train_samples,
                       col_sampleID, col_sampleType, col_batchID,
                       col_order = NULL, col_position = NULL,
                       targetVal_external = NULL, targetVal_method = c("mean", "median"),
-                      batch_wise = FALSE, targetVal_removeOutlier = !batch_wise,
+                      targetVal_batchWise = FALSE, targetVal_removeOutlier = !targetVal_batchWise,
                       correlation_type = c("cor", "pcor"),
                       correlation_method = c("pearson", "spearman"),
+                      correlation_batchWise = targetVal_batchWise,
                       min_var_num = 10, max_var_num = 30,
                       mtry_ratio = seq(0.2, 0.8, 0.2),
                       nodesize_ratio = seq(0.2, 0.8, 0.2),
@@ -482,7 +483,7 @@ run_TIGER <- function(test_samples, train_samples,
                                             col_sampleType = col_sampleType,
                                             col_batchID    = col_batchID,
                                             targetVal_method = targetVal_method,
-                                            batch_wise = batch_wise,
+                                            batchWise = targetVal_batchWise,
                                             targetVal_removeOutlier = targetVal_removeOutlier,
                                             coerce_numeric = FALSE)
     } else {
@@ -510,7 +511,7 @@ run_TIGER <- function(test_samples, train_samples,
     var_selected_list <- select_variable(train_num = train_num, test_num = test_num,
                                          train_batchID = train_samples[[col_batchID]],
                                          test_batchID  = test_samples[[col_batchID]],
-                                         batch_wise = batch_wise,
+                                         batchWise = correlation_batchWise,
                                          correlation_type   = correlation_type,
                                          correlation_method = correlation_method,
                                          min_var_num = min_var_num,
@@ -522,7 +523,7 @@ run_TIGER <- function(test_samples, train_samples,
 
     message("+ Data correction started.   ", Sys.time())
     message("  - Creating clusters...")
-    cl <- parallel::makeCluster(parallel.cores, outfile = "o")
+    cl <- parallel::makeCluster(parallel.cores)
     parallel::clusterExport(cl = cl, varlist = c("Internal.compute_errorRatio", "Internal.run_ensemble"))
     pbapply::pboptions(type = "timer", style = 3, char = "=", txt.width = 70)
 
@@ -530,16 +531,19 @@ run_TIGER <- function(test_samples, train_samples,
     test_samples <- cbind(original_idx = 1:nrow(test_samples), test_samples)
 
     message("  - Correcting data...")
-    res_var <- pbapply::pblapply(var_names, function(current_var, var_selected_list, targetVal_list, batch_wise,
+    res_var <- pbapply::pblapply(var_names, function(current_var, var_selected_list, targetVal_list,
+                                                     targetVal_batchWise, correlation_batchWise,
                                                      train_samples, test_samples, col_sampleID, col_sampleType,
                                                      col_batchID, col_order, col_position, batchID, mtry_ratio,
                                                      targetVal_method, nodesize_ratio, ...) {
-        message(current_var)
-        if (!batch_wise) {
+
+        if (!correlation_batchWise) {
             train_X_selected_var <- train_samples[c(col_sampleID, col_sampleType, col_batchID,
                                                     col_order, col_position,
                                                     var_selected_list$wholeDataset[[current_var]]) ]
+        }
 
+        if (!targetVal_batchWise) {
             train_y_all <- Internal.compute_errorRatio(train_samples = train_samples[!names(train_samples) %in% c(col_sampleID, col_batchID, col_order, col_position)],
                                                        col_sampleType = col_sampleType,
                                                        targetVal_df = targetVal_list$wholeDataset,
@@ -551,12 +555,14 @@ run_TIGER <- function(test_samples, train_samples,
         test_data <- cbind(y_raw = test_samples[[current_var]], test_samples)
 
         res_batch_list <- lapply(batchID, function(current_batch) {
-            message(current_batch)
-            if (batch_wise) {
+
+            if (correlation_batchWise) {
                 train_X_selected_var <- train_samples[c(col_sampleID, col_sampleType, col_batchID,
                                                         col_order, col_position,
                                                         var_selected_list[[current_batch]][[current_var]]) ]
+            }
 
+            if (targetVal_batchWise) {
                 train_X_batch <- train_X_selected_var[train_X_selected_var[[col_batchID]] == current_batch,]
 
                 train_y_batch <- Internal.compute_errorRatio(train_samples = train_X_batch[!names(train_X_batch) %in% c(col_sampleID, col_batchID, col_order, col_position)],
@@ -573,12 +579,14 @@ run_TIGER <- function(test_samples, train_samples,
             trainSet <- train_data[!names(train_data) %in% c(col_sampleID, col_sampleType, col_batchID)]
             testSet  <- test_data[test_data[[col_batchID]] == current_batch,]
 
+            trainSet[[current_var]] <- NULL
+
             var_pred <- Internal.run_ensemble(trainSet = trainSet, testSet = testSet,
                                               mtry_ratio = seq(0.2, 0.8, 0.2),
                                               nodesize_ratio = seq(0.2, 0.8, 0.2),
                                               ... = ..., return_base_res = FALSE)
 
-            if (batch_wise) {
+            if (targetVal_batchWise) {
                 test_targetVal_all   <- do.call(targetVal_method, list(test_data$y_raw, na.rm = TRUE))
                 test_targetVal_batch <- do.call(targetVal_method, list(testSet$y_raw,   na.rm = TRUE))
                 var_pred <- var_pred * test_targetVal_all / test_targetVal_batch
@@ -595,7 +603,8 @@ run_TIGER <- function(test_samples, train_samples,
         names(res_batch_df) <- current_var
         res_batch_df
 
-    }, var_selected_list = var_selected_list, targetVal_list = targetVal_list, batch_wise = batch_wise,
+    }, var_selected_list = var_selected_list, targetVal_list = targetVal_list,
+    targetVal_batchWise = targetVal_batchWise, correlation_batchWise = correlation_batchWise,
     train_samples = train_samples, test_samples = test_samples, col_sampleID = col_sampleID,
     col_sampleType = col_sampleType, col_batchID = col_batchID, col_order = col_order,
     col_position = col_position, batchID = batchID, mtry_ratio = mtry_ratio,
