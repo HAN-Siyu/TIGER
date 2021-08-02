@@ -32,35 +32,54 @@ Internal.boxplot.stats <- function(x, coef = 1.5, do.conf = TRUE, do.out = TRUE)
          iqr = iqr, lower_limit = lower_limit, upper_limit = upper_limit)
 }
 
-Internal.remove_NA <- function(input_data_num, data_label = NULL) {
+Internal.remove_NA <- function(input_data_num, data_label = NULL,
+                               replace_with_zero = FALSE) {
     data_na_sample_idx <- apply(input_data_num, 1, function(x) any(is.na(x)))
     data_na_sample_sum <- sum(data_na_sample_idx)
-    if (data_na_sample_sum == 1) {
-        warning(paste0("  - One sample in ", data_label, " contains NA and has been removed."))
-        input_data_num <- input_data_num[!data_na_sample_idx,]
-    } else if (data_na_sample_sum > 1) {
-        warning(paste0("  - ", data_na_sample_sum, " samples in ", data_label, " contain NA and have been removed."))
-        input_data_num <- input_data_num[!data_na_sample_idx,]
+
+    if (data_na_sample_sum > 0) {
+        if (!is.null(data_label)) warning(paste0("  - ", data_na_sample_sum, " sample(s) in ", data_label, " contain(s) NA."))
+
+        if (replace_with_zero) {
+            input_data_num[is.na(input_data_num)] <- 0
+        } else {
+            input_data_num <- input_data_num[!data_na_sample_idx,]
+            if (nrow(input_data_num) == 0) stop(paste0("  - Variable selection failed: ", data_label, " contain too many NA!"))
+        }
     }
-    if (nrow(input_data_num) == 0) stop(paste0("  - Variable selection failed: ", data_label, " contain too many NA!"))
+
     input_data_num
 }
+
+# Internal.impute_infinite <- function(input_data) {
+#     data_check <- sapply(input_data, function(one_col) {
+#         idx_inf_positive <- one_col == Inf
+#         idx_inf_negative <- one_col == -Inf
+#
+#         if (any(idx_inf_positive, na.rm = TRUE)) one_col[idx_inf_positive] <- max(one_col[is.finite(one_col)], na.rm = TRUE) * 4
+#         if (any(idx_inf_negative, na.rm = TRUE)) one_col[idx_inf_negative] <- min(one_col[is.finite(one_col)], na.rm = TRUE) / 4
+#         one_col
+#     })
+#     data.frame(data_check)
+# }
 
 Internal.compute_cor <- function(train_num, test_num = NULL,
                                  correlation_type = c("pcor", "cor"),
                                  correlation_method = c("spearman", "pearson")) {
 
-    message("  - Checking missing values...")
-    train_num_noNA <- Internal.remove_NA(train_num, data_label = "training data")
-    if (!is.null(test_num)) test_num_noNA <- Internal.remove_NA(test_num, data_label = "test data")
-
-    message("  - Computing correlation coefficients...")
-    if (ncol(train_num_noNA) > 500) message("    Your data have more than 500 variables. It may take some time to process large datasets.")
-
     if (correlation_type == "pcor") {
+        message("  - Checking missing values...")
+
+        train_num_noNA <- Internal.remove_NA(train_num, data_label = "training data")
+        if (!is.null(test_num)) test_num_noNA <- Internal.remove_NA(test_num, data_label = "test data")
+
+        message("  - Computing correlation coefficients...")
+        if (ncol(train_num_noNA) > 500) message("    Your data have more than 500 variables. It may take some time to process large datasets.")
+
         train_cor <- data.frame(ppcor::pcor(train_num_noNA, method = correlation_method)$estimate)
         names(train_cor) <- names(train_num_noNA)
         row.names(train_cor) <- names(train_num_noNA)
+
         if (!is.null(test_num)) {
             test_cor <- data.frame(ppcor::pcor(test_num_noNA, method = correlation_method)$estimate)
             names(test_cor) <- names(test_num_noNA)
@@ -68,10 +87,12 @@ Internal.compute_cor <- function(train_num, test_num = NULL,
         } else test_cor <- NULL
 
     } else {
-        train_cor <- data.frame(cor(train_num_noNA, method = correlation_method, use = "complete.obs"))
+        message("  - Computing correlation coefficients...")
+
+        train_cor <- data.frame(cor(train_num, method = correlation_method, use = "complete.obs"))
 
         if (!is.null(test_num)) {
-            test_cor <- data.frame(cor(test_num_noNA, method = correlation_method, use = "complete.obs"))
+            test_cor <- data.frame(cor(test_num, method = correlation_method, use = "complete.obs"))
         } else test_cor <- NULL
     }
 
@@ -182,14 +203,6 @@ select_variable <- function(train_num, test_num = NULL,
     correlation_type   <- match.arg(correlation_type)
     correlation_method <- match.arg(correlation_method)
 
-    # test_num <- test_num[!sapply(test_num, anyNA)]
-    # test_num <- test_num[sapply(test_num, function(x) all(is.finite(x)))]
-    # if (nrow(test_num) < 3) stop("  - Data of test samples have too many NA or infinite values. Maybe you would like to impute your data!")
-    #
-    # train_num <- train_num[!sapply(train_num, anyNA)]
-    # train_num <- train_num[sapply(train_num, function(x) all(is.finite(x)))]
-    # if (nrow(train_num) < 3) stop("  - Data of train samples have too many NA or infinite values. Maybe you would like to impute your data!")
-
     min_var_num <- ifelse(is.null(min_var_num), 1, min_var_num)
     max_var_num <- ifelse(is.null(max_var_num), ncol(train_num), max_var_num)
 
@@ -222,12 +235,6 @@ select_variable <- function(train_num, test_num = NULL,
         if (any(names(train_num) != names(test_num))) stop("  - Variables in training and test data cannot match!")
     }
 
-    # stop_cl <- FALSE
-    # if (is.null(cl)) {
-    #     cl <- parallel::makeCluster(parallel.cores)
-    #     stop_cl <- TRUE
-    # }
-
     cor_info <- Internal.compute_cor(train_num = train_num, test_num = test_num,
                                      correlation_type = correlation_type,
                                      correlation_method = correlation_method)
@@ -235,15 +242,12 @@ select_variable <- function(train_num, test_num = NULL,
     selected_var <- Internal.select_variable(cor_info = cor_info,
                                              min_var_num = min_var_num,
                                              max_var_num = max_var_num)
-
-    # if (stop_cl) {
-    #     parallel::stopCluster(cl)
-    # }
-    selected_var
 }
 
 Internal.compute_targetVal <- function(input_col, targetVal_method = c("median", "mean"),
                                        targetVal_removeOutlier = TRUE) {
+
+    input_col <- input_col[is.finite(input_col)]
     if (targetVal_removeOutlier) outlier_res <- Internal.boxplot.stats(input_col, coef = 1.5)$out
 
     if (targetVal_method == "mean") {
@@ -340,7 +344,6 @@ Internal.run_ensemble <- function(trainSet, testSet,
 
             train_fold     <- trainSet[train_idx,]
             validate_fold  <- trainSet[-train_idx,]
-            # train_fold[c("y_target", "y_raw")] <- NULL
 
             fold_formula <- c(formula = as.formula(y ~ .),
                               data = list(train_fold[!names(train_fold) %in% c("y_target", "y_raw")]),
@@ -365,14 +368,6 @@ Internal.run_ensemble <- function(trainSet, testSet,
         pred_test_convert <- testSet$y_raw / (pred_test + 1)
 
         out <- list(mod_weight = mod_weight, pred_test_convert = pred_test_convert)
-        # if (return_base_res) out <- c(out, RF_base_mod = list(RF_base_mod))
-        # if (return_base_res) {
-        #     out <- list(mod_weight = mod_weight, pred_test_convert = pred_test_convert, RF_base_mod = RF_base_mod)
-        #
-        # } else {
-        #     out <- list(mod_weight = mod_weight, pred_test_convert = pred_test_convert)
-        # }
-        out
     })
     mod_weights <- sapply(pred_ensemble, function(x) x$mod_weight)
     mod_weights_norm <- mod_weights / sum(mod_weights, na.rm = TRUE)
@@ -406,13 +401,8 @@ run_TIGER <- function(test_samples, train_samples,
     correlation_type   <- match.arg(correlation_type)
     correlation_method <- match.arg(correlation_method)
 
-    # zero values?
-    # Inf values?
-    # NA values?
-    # order the output
-
     for (col_idx in c(col_sampleID, col_sampleType, col_batchID)) {
-        test_samples[[col_idx]] <- as.character(test_samples[[col_idx]])
+        test_samples[[col_idx]]  <- as.character(test_samples[[col_idx]])
         train_samples[[col_idx]] <- as.character(train_samples[[col_idx]])
     }
 
@@ -435,7 +425,7 @@ run_TIGER <- function(test_samples, train_samples,
     }
 
     batchID_train <- unique(train_samples[[col_batchID]])
-    batchID_test <- unique(test_samples[[col_batchID]])
+    batchID_test  <- unique(test_samples[[col_batchID]])
 
     if(!all(batchID_test %in% batchID_train)) stop("  - The batchID in train and test samples cannot match!")
     batchID <- batchID_test
@@ -455,22 +445,33 @@ run_TIGER <- function(test_samples, train_samples,
         targetVal_list <- targetVal_external
     }
 
+    # Variable selection
+    message("+ Selecting highly-correlated variables...   ", Sys.time())
+
+    # To check infinite values. - Ignored
+    # train_samples_list  <- split(train_samples, f = train_samples[[col_sampleType]])
+    # train_samples_check <- lapply(train_samples_list, Internal.impute_infinite)
+    # train_samples <- do.call("rbind", train_samples_check)
+    # test_samples  <- Internal.impute_infinite(test_samples)
+
     message("  - Checking variable names...")
     var_names <- names(targetVal_list[[1]])
     train_num <- train_samples[!names(train_samples) %in% c(col_sampleID, col_sampleType, col_batchID, col_order, col_position)]
-    test_num <- test_samples[!names(test_samples) %in% c(col_sampleID, col_sampleType, col_batchID, col_order, col_position)]
+    test_num  <- test_samples[!names(test_samples) %in% c(col_sampleID, col_sampleType, col_batchID, col_order, col_position)]
 
     if (!all(var_names == names(train_num))) stop("  - Varibale names in the train and test samples cannot match!")
     if (!all(var_names == names(test_num)))  stop("  - Varibale names in the train and test samples cannot match!")
 
-    # Variable selection
-    message("+ Selecting highly-correlated variables...   ", Sys.time())
     var_selected <- select_variable(train_num = train_num,
                                     test_num = test_num,
                                     correlation_type = correlation_type,
                                     correlation_method = correlation_method,
                                     min_var_num = min_var_num, max_var_num = max_var_num,
                                     coerce_numeric = TRUE)
+
+    idx_test_na <- is.na(test_samples)
+    test_samples[idx_test_na] <- 0
+    train_samples[is.na(train_samples)] <- 0
 
     message("+ Data correction started.   ", Sys.time())
     message("  - Creating clusters...")
@@ -486,7 +487,6 @@ run_TIGER <- function(test_samples, train_samples,
                                                      train_samples, test_samples, col_sampleID, col_sampleType,
                                                      col_batchID, col_order, col_position, batchID, mtry_ratio,
                                                      nodesize_ratio, ...) {
-        # message("  - Current variable: ", current_var, "   ", Sys.time())
 
         train_X_selected_var <- train_samples[c(col_sampleID, col_sampleType, col_batchID,
                                                 col_order, col_position, var_selected[[current_var]]) ]
@@ -507,7 +507,6 @@ run_TIGER <- function(test_samples, train_samples,
         }
 
         res_batch_list <- lapply(batchID, function(current_batch) {
-            # message("    - Current batch: ", current_batch, "   ", Sys.time())
 
             if (targetVal_batch) {
                 train_X_batch <- train_X_selected_var[train_X_selected_var[[col_batchID]] == current_batch,]
@@ -535,17 +534,19 @@ run_TIGER <- function(test_samples, train_samples,
                 test_targetVal_all   <- do.call(targetVal_method, list(test_data$y_raw, na.rm = TRUE))
                 test_targetVal_batch <- do.call(targetVal_method, list(testSet$y_raw,   na.rm = TRUE))
                 var_pred <- var_pred * test_targetVal_all / test_targetVal_batch
-                # var_pred <- var_pred * test_targetVal_batch / test_targetVal_all
             }
 
             names(var_pred) <- testSet$original_idx
             var_pred
         })
-        res_batch <- do.call("c", res_batch_list)
+
+        res_batch       <- do.call("c", res_batch_list)
         res_batch_order <- res_batch[order(as.numeric(names(res_batch)))]
-        res_batch_df <- data.frame(res_batch_order)
+        res_batch_df    <- data.frame(res_batch_order)
+
         names(res_batch_df) <- current_var
         res_batch_df
+
     }, var_selected = var_selected, targetVal_batch = targetVal_batch,
     train_samples = train_samples, test_samples = test_samples, col_sampleID = col_sampleID,
     col_sampleType = col_sampleType, col_batchID = col_batchID, col_order = col_order,
@@ -564,6 +565,8 @@ run_TIGER <- function(test_samples, train_samples,
 
     test_samples[names(res_var_df)] <- res_var_df
     test_samples$original_idx <- NULL
+    test_samples[idx_test_na] <- NA
+
     message("+ Completed.   ", Sys.time())
     test_samples
 }
