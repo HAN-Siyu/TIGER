@@ -55,6 +55,8 @@ Internal.compute_cor <- function(train_num, test_num = NULL,
     if (!is.null(test_num)) test_num_noNA <- Internal.remove_NA(test_num, data_label = "test data")
 
     message("  - Computing correlation coefficients...")
+    if (ncol(train_num_noNA) > 500) message("  - Your data have more than 500 variables. It may take some time to process large datasets.")
+
     if (correlation_type == "pcor") {
         train_cor <- data.frame(ppcor::pcor(train_num_noNA, method = correlation_method)$estimate)
         names(train_cor) <- names(train_num_noNA)
@@ -225,7 +227,6 @@ select_variable <- function(train_num, test_num = NULL,
     #     cl <- parallel::makeCluster(parallel.cores)
     #     stop_cl <- TRUE
     # }
-    if (ncol(train_num) > 500) message("  - It may take some time to process large datasets.")
 
     cor_info <- Internal.compute_cor(train_num = train_num, test_num = test_num,
                                      correlation_type = correlation_type,
@@ -531,6 +532,7 @@ run_TIGER <- function(test_samples, train_samples,
                 test_targetVal_all   <- do.call(targetVal_method, list(test_data$y_raw, na.rm = TRUE))
                 test_targetVal_batch <- do.call(targetVal_method, list(testSet$y_raw,   na.rm = TRUE))
                 var_pred <- var_pred * test_targetVal_all / test_targetVal_batch
+                # var_pred <- var_pred * test_targetVal_batch / test_targetVal_all
             }
 
             names(var_pred) <- testSet$original_idx
