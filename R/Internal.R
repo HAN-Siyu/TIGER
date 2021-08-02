@@ -102,6 +102,12 @@ Internal.select_variable <- function(cor_info, min_var_num = NULL,
                                      max_var_num = NULL) {
 
     variable_name <- cor_info$variable_name
+
+    train_cor <- cor_info$train_cor
+    test_cor  <- cor_info$test_cor
+    train_cor[is.na(train_cor)] <- 0
+    test_cor[is.na(test_cor)] <- 0
+
     pb <- pbapply::timerProgressBar(min = 0, max = length(variable_name),
                                     initial = 0, style = 3, width = 70,
                                     min_time = 10)
@@ -185,7 +191,7 @@ Internal.select_variable <- function(cor_info, min_var_num = NULL,
         selected_var_name
     },
     variable_name = variable_name,
-    train_cor = cor_info$train_cor, test_cor = cor_info$test_cor,
+    train_cor = train_cor, test_cor = test_cor,
     min_var_num = min_var_num, max_var_num = max_var_num)
     pbapply::closepb(pb)
     names(selected_var) <- variable_name
@@ -353,6 +359,11 @@ Internal.compute_errorRatio <- function(train_samples, col_sampleType,
     targetVal_df = targetVal_df, current_var = current_var)
 
     out_df <- data.frame(t(out))
+
+    if (all(out_df$errorRatio == 0)) {
+        out_df$errorRatio <- rnorm(length(out_df$errorRatio), sd = 0.001, mean = 0.0005)
+    }
+    out_df
 }
 
 Internal.run_ensemble <- function(trainSet, testSet,
@@ -510,7 +521,7 @@ run_TIGER <- function(test_samples, train_samples,
 
     message("+ Data correction started.   ", Sys.time())
     message("  - Creating clusters...")
-    cl <- parallel::makeCluster(parallel.cores)
+    cl <- parallel::makeCluster(parallel.cores, outfile = "o")
     parallel::clusterExport(cl = cl, varlist = c("Internal.compute_errorRatio", "Internal.run_ensemble"))
     pbapply::pboptions(type = "timer", style = 3, char = "=", txt.width = 70)
 
@@ -518,10 +529,11 @@ run_TIGER <- function(test_samples, train_samples,
     test_samples <- cbind(original_idx = 1:nrow(test_samples), test_samples)
 
     message("  - Correcting data...")
-    res_var <- pbapply::pblapply(var_names, function(current_var, var_selected_list, batch_wise,
+    res_var <- pbapply::pblapply(var_names, function(current_var, var_selected_list, targetVal_list, batch_wise,
                                                      train_samples, test_samples, col_sampleID, col_sampleType,
                                                      col_batchID, col_order, col_position, batchID, mtry_ratio,
-                                                     nodesize_ratio, ...) {
+                                                     targetVal_method, nodesize_ratio, ...) {
+        message(current_var)
         if (!batch_wise) {
             train_X_selected_var <- train_samples[c(col_sampleID, col_sampleType, col_batchID,
                                                     col_order, col_position,
@@ -538,7 +550,7 @@ run_TIGER <- function(test_samples, train_samples,
         test_data <- cbind(y_raw = test_samples[[current_var]], test_samples)
 
         res_batch_list <- lapply(batchID, function(current_batch) {
-
+            message(current_batch)
             if (batch_wise) {
                 train_X_selected_var <- train_samples[c(col_sampleID, col_sampleType, col_batchID,
                                                         col_order, col_position,
@@ -582,11 +594,11 @@ run_TIGER <- function(test_samples, train_samples,
         names(res_batch_df) <- current_var
         res_batch_df
 
-    }, var_selected_list = var_selected_list, batch_wise = batch_wise,
+    }, var_selected_list = var_selected_list, targetVal_list = targetVal_list, batch_wise = batch_wise,
     train_samples = train_samples, test_samples = test_samples, col_sampleID = col_sampleID,
     col_sampleType = col_sampleType, col_batchID = col_batchID, col_order = col_order,
     col_position = col_position, batchID = batchID, mtry_ratio = mtry_ratio,
-    nodesize_ratio = nodesize_ratio, ... = ..., cl = cl)
+    nodesize_ratio = nodesize_ratio, targetVal_method = targetVal_method, ... = ..., cl = cl)
 
     parallel::stopCluster(cl)
 
