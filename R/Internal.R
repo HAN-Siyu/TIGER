@@ -467,6 +467,8 @@ run_TIGER <- function(test_samples, train_samples,
         stop("  - The values of test samples (except sampleType and batchID) should be numeric!")
     }
 
+    test_samples_bak <- test_samples
+
     batchID_train <- unique(train_samples[[col_batchID]])
     batchID_test  <- unique(test_samples[[col_batchID]])
 
@@ -514,6 +516,7 @@ run_TIGER <- function(test_samples, train_samples,
                                          min_var_num = min_var_num,
                                          max_var_num = max_var_num,
                                          coerce_numeric = TRUE)
+    idx_test_zero <- test_samples == 0
 
     idx_test_na <- is.na(test_samples)
     test_samples[idx_test_na] <- 0
@@ -612,6 +615,9 @@ run_TIGER <- function(test_samples, train_samples,
 
     test_samples[names(res_var_df)] <- res_var_df
     test_samples$original_idx <- NULL
+
+    test_samples[idx_test_zero] <- 0
+    test_samples[is.na(test_samples)] <- test_samples_bak[is.na(test_samples)]
     test_samples[idx_test_na] <- NA
 
     message("+ Completed.   ", Sys.time())
