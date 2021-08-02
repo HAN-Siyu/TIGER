@@ -516,8 +516,6 @@ run_TIGER <- function(test_samples, train_samples,
                                          min_var_num = min_var_num,
                                          max_var_num = max_var_num,
                                          coerce_numeric = TRUE)
-    idx_test_zero <- test_samples == 0
-
     idx_test_na <- is.na(test_samples)
     test_samples[idx_test_na] <- 0
     train_samples[is.na(train_samples)] <- 0
@@ -616,8 +614,8 @@ run_TIGER <- function(test_samples, train_samples,
     test_samples[names(res_var_df)] <- res_var_df
     test_samples$original_idx <- NULL
 
-    test_samples[idx_test_zero] <- 0
-    test_samples[is.na(test_samples)] <- test_samples_bak[is.na(test_samples)]
+    test_samples[is.na(test_samples)]   <- as.numeric(test_samples_bak[is.na(test_samples)])
+    test_samples[test_samples_bak == 0] <- 0
     test_samples[idx_test_na] <- NA
 
     message("+ Completed.   ", Sys.time())
