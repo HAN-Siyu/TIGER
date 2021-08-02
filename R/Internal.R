@@ -614,7 +614,8 @@ run_TIGER <- function(test_samples, train_samples,
     test_samples[names(res_var_df)] <- res_var_df
     test_samples$original_idx <- NULL
 
-    test_samples[is.na(test_samples)]   <- as.numeric(test_samples_bak[is.na(test_samples)])
+    test_samples[is.na(test_samples)] <- as.numeric(test_samples_bak[is.na(test_samples)])
+    test_samples[test_samples < 0]    <- as.numeric(test_samples_bak[test_samples < 0])
     test_samples[test_samples_bak == 0] <- 0
     test_samples[idx_test_na] <- NA
 
