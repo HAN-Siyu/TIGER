@@ -68,12 +68,11 @@ Internal.compute_cor <- function(train_num, test_num = NULL,
                                  correlation_method = c("spearman", "pearson")) {
 
     if (correlation_type == "pcor") {
-        message("  - Checking missing values...")
+        message("    Checking missing values...")
 
         train_num_noNA <- Internal.remove_NA(train_num, data_label = "training data")
         if (!is.null(test_num)) test_num_noNA <- Internal.remove_NA(test_num, data_label = "test data")
 
-        message("  - Computing correlation coefficients...")
         if (ncol(train_num_noNA) > 500) message("    Your data have more than 500 variables. It may take some time to process large datasets.")
 
         train_cor <- data.frame(ppcor::pcor(train_num_noNA, method = correlation_method)$estimate)
@@ -87,7 +86,6 @@ Internal.compute_cor <- function(train_num, test_num = NULL,
         } else test_cor <- NULL
 
     } else {
-        message("  - Computing correlation coefficients...")
 
         train_cor <- data.frame(cor(train_num, method = correlation_method, use = "complete.obs"))
 
@@ -195,6 +193,8 @@ Internal.select_variable <- function(cor_info, min_var_num = NULL,
 }
 
 select_variable <- function(train_num, test_num = NULL,
+                            train_batchID = NULL, test_batchID = NULL,
+                            batch_wise = FALSE,
                             correlation_type = c("pcor", "cor"),
                             correlation_method = c("spearman", "pearson"),
                             min_var_num = NULL, max_var_num = NULL,
@@ -235,13 +235,45 @@ select_variable <- function(train_num, test_num = NULL,
         if (any(names(train_num) != names(test_num))) stop("  - Variables in training and test data cannot match!")
     }
 
-    cor_info <- Internal.compute_cor(train_num = train_num, test_num = test_num,
-                                     correlation_type = correlation_type,
-                                     correlation_method = correlation_method)
-    message("  - Selecting variables...")
-    selected_var <- Internal.select_variable(cor_info = cor_info,
-                                             min_var_num = min_var_num,
-                                             max_var_num = max_var_num)
+    if (batch_wise) {
+        train_num_list <- split(train_num, f = train_batchID)
+        test_num_list  <- split(test_num,  f = test_batchID)
+
+        batch_names_train <- sort(names(train_num_list))
+        batch_names_test  <- sort(names(test_num_list))
+        batch_names_len   <- length(batch_names_train)
+        if (!all(batch_names_train == batch_names_test) | batch_names_len != length(batch_names_test)) stop("    Batch names of train and test samples cannot match!")
+
+        selected_var_list <- lapply(1:batch_names_len, function(batch_name_idx) {
+
+            one_batch_name <- batch_names_train[[batch_name_idx]]
+            message("  - Current batch: ", one_batch_name, "  (", batch_name_idx, "/", batch_names_len, ")")
+
+            message("    Computing correlation coefficients...")
+            cor_info <- Internal.compute_cor(train_num = train_num_list[[one_batch_name]],
+                                             test_num = test_num_list[[one_batch_name]],
+                                             correlation_type = correlation_type,
+                                             correlation_method = correlation_method)
+
+            message("    Selecting variables...")
+            selected_var <- Internal.select_variable(cor_info = cor_info,
+                                                     min_var_num = min_var_num,
+                                                     max_var_num = max_var_num)
+        })
+        names(selected_var_list) <- batch_names_train
+    } else {
+        message("  - Computing correlation coefficients...")
+        cor_info <- Internal.compute_cor(train_num = train_num, test_num = test_num,
+                                         correlation_type = correlation_type,
+                                         correlation_method = correlation_method)
+        message("  - Selecting variables...")
+        selected_var <- Internal.select_variable(cor_info = cor_info,
+                                                 min_var_num = min_var_num,
+                                                 max_var_num = max_var_num)
+        selected_var_list <- list(wholeDataset = selected_var)
+    }
+
+    selected_var_list
 }
 
 Internal.compute_targetVal <- function(input_col, targetVal_method = c("median", "mean"),
@@ -262,8 +294,8 @@ Internal.compute_targetVal <- function(input_col, targetVal_method = c("median",
 
 compute_targetVal <- function(QC_data, col_sampleType, col_batchID,
                               targetVal_method = c("median", "mean"),
-                              targetVal_batch = FALSE,
-                              targetVal_removeOutlier = !targetVal_batch,
+                              batch_wise = FALSE,
+                              targetVal_removeOutlier = !batch_wise,
                               coerce_numeric = FALSE) {
 
     targetVal_method   <- match.arg(targetVal_method)
@@ -282,7 +314,7 @@ compute_targetVal <- function(QC_data, col_sampleType, col_batchID,
         if (!all(sapply(data_numeric, is.numeric))) stop("The values of the input dataset (except sampleType and batchID) should be numeric!")
     }
 
-    if (targetVal_batch) {
+    if (batch_wise) {
         target_values <- aggregate(data_numeric, by = list(batch = batchID, sample = sampleID),
                                    FUN = Internal.compute_targetVal, targetVal_method = targetVal_method,
                                    targetVal_removeOutlier = targetVal_removeOutlier)
@@ -387,7 +419,7 @@ run_TIGER <- function(test_samples, train_samples,
                       col_sampleID, col_sampleType, col_batchID,
                       col_order = NULL, col_position = NULL,
                       targetVal_external = NULL, targetVal_method = c("mean", "median"),
-                      targetVal_batch = FALSE, targetVal_removeOutlier = !targetVal_batch,
+                      batch_wise = FALSE, targetVal_removeOutlier = !batch_wise,
                       correlation_type = c("cor", "pcor"),
                       correlation_method = c("pearson", "spearman"),
                       min_var_num = 10, max_var_num = 30,
@@ -435,9 +467,9 @@ run_TIGER <- function(test_samples, train_samples,
         message("+ Computing target values...   ", Sys.time())
         targetVal_list <- compute_targetVal(QC_data = train_samples[!names(train_samples) %in% c(col_sampleID, col_order, col_position)],
                                             col_sampleType = col_sampleType,
-                                            col_batchID = col_batchID,
+                                            col_batchID    = col_batchID,
                                             targetVal_method = targetVal_method,
-                                            targetVal_batch = targetVal_batch,
+                                            batch_wise = batch_wise,
                                             targetVal_removeOutlier = targetVal_removeOutlier,
                                             coerce_numeric = FALSE)
     } else {
@@ -448,7 +480,7 @@ run_TIGER <- function(test_samples, train_samples,
     # Variable selection
     message("+ Selecting highly-correlated variables...   ", Sys.time())
 
-    # To check infinite values. - Ignored
+    # To check infinite values. - Deprecated. Infinite values are not allowed.
     # train_samples_list  <- split(train_samples, f = train_samples[[col_sampleType]])
     # train_samples_check <- lapply(train_samples_list, Internal.impute_infinite)
     # train_samples <- do.call("rbind", train_samples_check)
@@ -462,12 +494,15 @@ run_TIGER <- function(test_samples, train_samples,
     if (!all(var_names == names(train_num))) stop("  - Varibale names in the train and test samples cannot match!")
     if (!all(var_names == names(test_num)))  stop("  - Varibale names in the train and test samples cannot match!")
 
-    var_selected <- select_variable(train_num = train_num,
-                                    test_num = test_num,
-                                    correlation_type = correlation_type,
-                                    correlation_method = correlation_method,
-                                    min_var_num = min_var_num, max_var_num = max_var_num,
-                                    coerce_numeric = TRUE)
+    var_selected_list <- select_variable(train_num = train_num, test_num = test_num,
+                                         train_batchID = train_samples[[col_batchID]],
+                                         test_batchID  = test_samples[[col_batchID]],
+                                         batch_wise = batch_wise,
+                                         correlation_type   = correlation_type,
+                                         correlation_method = correlation_method,
+                                         min_var_num = min_var_num,
+                                         max_var_num = max_var_num,
+                                         coerce_numeric = TRUE)
 
     idx_test_na <- is.na(test_samples)
     test_samples[idx_test_na] <- 0
@@ -483,20 +518,15 @@ run_TIGER <- function(test_samples, train_samples,
     test_samples <- cbind(original_idx = 1:nrow(test_samples), test_samples)
 
     message("  - Correcting data...")
-    res_var <- pbapply::pblapply(var_names, function(current_var, var_selected, targetVal_batch,
+    res_var <- pbapply::pblapply(var_names, function(current_var, var_selected_list, batch_wise,
                                                      train_samples, test_samples, col_sampleID, col_sampleType,
                                                      col_batchID, col_order, col_position, batchID, mtry_ratio,
                                                      nodesize_ratio, ...) {
+        if (!batch_wise) {
+            train_X_selected_var <- train_samples[c(col_sampleID, col_sampleType, col_batchID,
+                                                    col_order, col_position,
+                                                    var_selected_list$wholeDataset[[current_var]]) ]
 
-        train_X_selected_var <- train_samples[c(col_sampleID, col_sampleType, col_batchID,
-                                                col_order, col_position, var_selected[[current_var]]) ]
-
-        train_X_selected_var <- train_X_selected_var[!apply(train_X_selected_var, 1, anyNA),]
-        if (any(table(train_X_selected_var[[col_batchID]]) < 5)) stop("  - Your train data contain too many NA. Maybe you would like to impute your data!")
-
-        test_data <- cbind(y_raw = test_samples[[current_var]], test_samples)
-
-        if (!targetVal_batch) {
             train_y_all <- Internal.compute_errorRatio(train_samples = train_samples[!names(train_samples) %in% c(col_sampleID, col_batchID, col_order, col_position)],
                                                        col_sampleType = col_sampleType,
                                                        targetVal_df = targetVal_list$wholeDataset,
@@ -505,10 +535,15 @@ run_TIGER <- function(test_samples, train_samples,
             train_data_all <- cbind(y_target = train_y_all$targetVal, y_raw = train_y_all$rawVal,
                                     y = train_y_all$errorRatio, train_X_selected_var)
         }
+        test_data <- cbind(y_raw = test_samples[[current_var]], test_samples)
 
         res_batch_list <- lapply(batchID, function(current_batch) {
 
-            if (targetVal_batch) {
+            if (batch_wise) {
+                train_X_selected_var <- train_samples[c(col_sampleID, col_sampleType, col_batchID,
+                                                        col_order, col_position,
+                                                        var_selected_list[[current_batch]][[current_var]]) ]
+
                 train_X_batch <- train_X_selected_var[train_X_selected_var[[col_batchID]] == current_batch,]
 
                 train_y_batch <- Internal.compute_errorRatio(train_samples = train_X_batch[!names(train_X_batch) %in% c(col_sampleID, col_batchID, col_order, col_position)],
@@ -530,7 +565,7 @@ run_TIGER <- function(test_samples, train_samples,
                                               nodesize_ratio = seq(0.2, 0.8, 0.2),
                                               ... = ..., return_base_res = FALSE)
 
-            if (targetVal_batch) {
+            if (batch_wise) {
                 test_targetVal_all   <- do.call(targetVal_method, list(test_data$y_raw, na.rm = TRUE))
                 test_targetVal_batch <- do.call(targetVal_method, list(testSet$y_raw,   na.rm = TRUE))
                 var_pred <- var_pred * test_targetVal_all / test_targetVal_batch
@@ -547,7 +582,7 @@ run_TIGER <- function(test_samples, train_samples,
         names(res_batch_df) <- current_var
         res_batch_df
 
-    }, var_selected = var_selected, targetVal_batch = targetVal_batch,
+    }, var_selected_list = var_selected_list, batch_wise = batch_wise,
     train_samples = train_samples, test_samples = test_samples, col_sampleID = col_sampleID,
     col_sampleType = col_sampleType, col_batchID = col_batchID, col_order = col_order,
     col_position = col_position, batchID = batchID, mtry_ratio = mtry_ratio,
