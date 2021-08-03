@@ -250,120 +250,7 @@ train_test_kNNreg <- function(input_qc_class = NULL, train_set = NULL, test_set 
 
 
 
-                if ("kNN" %in% use_methods) {
-                    train_X_mtx <- as.matrix(train_X)
-                    test_X_mtx <- as.matrix(test_X)
-                    k_batch <- min(k_batch, nrow(train_X))
-                    kNNreg_mod <- FNN::knn.reg(train = train_X_mtx, test = test_X_mtx,
-                                               y = train_y, k = k_batch, algorithm = algorithm)
-                    test_y_pred_kNN <- kNNreg_mod$pred
-                    # quantile(test_y_pred_kNN)
-
-                    test_y_pred <- test_y_pred_kNN
-                } else if ("xgboost" %in% use_methods) {
-                    # train_X_DMtx <- xgboost::xgb.DMatrix(data = as.matrix(train_X), label = train_y)
-                    # test_X_DMtx  <- xgboost::xgb.DMatrix(data = as.matrix(test_X))
-                    if(is.null(xgboost_params)) {
-                        params <- list(booster = "gbtree", max_depth = 6,
-                                       # eval_metric = "mae",
-                                       eta = 0.01, # 0.01~0.1
-                                       subsample = 0.6,
-                                       colsample_bytree = 0.6,
-                                       objective = "reg:squarederror") #gbtree
-                    } else {
-                        params <- xgboost_params
-                    }
-
-                    xgb_cv <- xgboost::xgb.cv(params = params,
-                                              # data = train_X_DMtx,
-                                              data = as.matrix(train_X), label = train_y,
-                                              nrounds = 1000,
-                                              nfold = nrow(train_X), showsd = T,
-                                              verbose = 0,
-                                              early_stopping_rounds = 50,
-                                              maximize = F)
-                    xgb_mod <- xgboost::xgboost(params = params,
-                                                # data = train_X_DMtx,
-                                                data = as.matrix(train_X), label = train_y,
-                                                nrounds = xgb_cv$best_iteration,
-                                                # nrounds = 500,
-                                                # watchlist = list(val=dtest,train=dtrain),
-                                                # early_stopping_rounds = 20,
-                                                verbose = 0)
-                    test_y_pred_xgb <- predict(xgb_mod, as.matrix(test_X))
-                    # quantile(test_y_pred_xgb)
-
-                    test_y_pred <- test_y_pred_xgb
-                } else if ("kNN_stack" %in% use_methods) {
-                    # print("kNN_stack")
-                    train_X_mtx <- as.matrix(train_X)
-                    test_X_mtx <- as.matrix(test_X)
-                    k_range <- k_range[k_range <= nrow(train_X_mtx)]
-                    tmp <- lapply(k_range, function(k) {
-                        # train_y_pred_kNN <- FNN::knn.reg(train = train_X_mtx, test = train_X_mtx,
-                        #                                  y = train_y, k = k, algorithm = algorithm)$pred
-
-                        test_y_pred_kNN <- FNN::knn.reg(train = train_X_mtx, test = test_X_mtx,
-                                                        y = train_y, k = k, algorithm = algorithm)$pred
-                        # list(train_y_pred_kNN = train_y_pred_kNN, test_y_pred_kNN = test_y_pred_kNN)
-                    })
-                    # tmp_train_y <- as.data.frame(t(do.call("rbind", lapply(tmp, function(x) x[[1]]))))
-                    # tmp_train_y <- cbind(y = train_y, tmp_train_y)
-                    # tmp_test_y <- as.data.frame(t(do.call("rbind", lapply(tmp, function(x) x[[2]]))))
-                    #
-                    # lm_mod <- lm(y~., data = tmp_train_y)
-                    # test_y_pred <- predict(lm_mod, tmp_test_y)
-                    tmp_df <- as.data.frame(do.call("rbind", tmp))
-                    # x <- tmp_df[[79]]
-                    if(checkOutlier_recoverNorm) {
-                        tmp_df <- as.data.frame(sapply(tmp_df, function(x) {
-                            outlier_res <- .boxplot.stats(x)$out
-
-                            replace_val <- median(x[!(x %in% outlier_res)], na.rm = T)
-
-                            x[x %in% outlier_res] <- replace_val
-                            x
-                        }))
-                    }
-                    # test_y_pred <- colMeans(tmp_df, na.rm = T)
-                    test_y_pred_kNN_stack <- sapply(tmp_df, median, na.rm = T)
-                    # quantile(test_y_pred_kNN_stack)
-
-                    test_y_pred <- test_y_pred_kNN_stack
-                } else if ("ranger" %in% use_methods) {
-                    input_train_data <- cbind(y = train_y, train_X)
-                    RF_mod <- ranger::ranger(y ~., data = input_train_data)
-                    test_y_pred <- predict(RF_mod, test_X)$predictions
-                } else if ("rf" %in% use_methods) {
-                    input_train_data <- cbind(y = train_y, train_X)
-
-                    if(is.null(rf_params)) {
-                        RF_mod <- randomForest::randomForest(y ~., data = input_train_data)
-                    } else {
-                        mtry <- round(rf_params$mtry_ratio * (ncol(input_train_data) - 1))
-                        mtry <- ifelse(mtry == 0,
-                                       sqrt(ncol(input_train_data) - 1),
-                                       mtry)
-                        # nodesize <- rf_params$nodesize
-                        # samplesize <- rf_params$samplesize
-                        print(rf_params)
-
-                        RF_mod <- randomForest::randomForest(y ~., data = input_train_data,
-                                                             ntree = rf_params$ntree,
-                                                             mtry = mtry,
-                                                             nodesize = rf_params$nodesize,
-                                                             samplesize = rf_params$samplesize)
-                        # message("mtry:", mtry, "nodesize:", nodesize, "samplesize:", samplesize)
-                    }
-                    test_y_pred_rf <- predict(RF_mod, test_X)
-                    # quantile(test_y_pred_rf)
-
-                    outlier_res <- .boxplot.stats(test_y_pred_rf)$out
-                    replace_val <- mean(test_y_pred_rf[!(test_y_pred_rf %in% outlier_res)], na.rm = T)
-                    test_y_pred_rf[test_y_pred_rf %in% outlier_res] <- replace_val
-
-                    test_y_pred <- test_y_pred_rf
-                } else if ("TIGER" %in% use_methods) {
+                if ("TIGER" %in% use_methods) {
                     # message("rf_stack")
                     input_train_data <- cbind(y = train_y, train_X)
                     mtry <- round(seq(0.2, 0.8, 0.2) * ncol(train_X))
@@ -439,40 +326,26 @@ train_test_kNNreg <- function(input_qc_class = NULL, train_set = NULL, test_set 
 
                     }, input_train_data = input_train_data, rf_params = rf_params, test_X)
 
-                    if (rf_stack_mode != "mean") {
-                        ensemble_train_y_pred <- sapply(ensemble_y_pred_rf, function(x, input_train_data, train_y_true, train_y_raw, rf_stack_mode) {
-                            train_y_pred <- x$pred_train
-                            if (rf_stack_mode  == "weight_recover_y") {
-                                train_normFactor <- train_y_pred$pred + 1
-                                train_recover <- train_y_pred$raw / train_normFactor
-                                train_error_ratio <- (abs(train_recover - train_y_pred$true)/train_y_pred$true)
-                                out <- train_error_ratio
-                            } else if (rf_stack_mode == "weight_target_y") {
-                                train_error_ratio <- (abs(train_y_pred$pred - train_y_pred$target)/train_y_pred$target)
-                                out <- train_error_ratio
-                            } else stop("ERROR: weight mode for stack rf!")
-                            out
-                        }, input_train_data = input_train_data, train_y_true = train_y_true, train_y_raw = train_y_raw, rf_stack_mode = rf_stack_mode)
-                        # ensemble_train_y_pred[!is.finite(ensemble_train_y_pred)] <- NA
+                    ensemble_train_y_pred <- sapply(ensemble_y_pred_rf, function(x, input_train_data, train_y_true, train_y_raw, rf_stack_mode) {
+                        train_y_pred <- x$pred_train
+                        train_normFactor <- train_y_pred$pred + 1
+                        train_recover <- train_y_pred$raw / train_normFactor
+                        train_error_ratio <- (abs(train_recover - train_y_pred$true)/train_y_pred$true)
+                        out <- train_error_ratio
+                    }, input_train_data = input_train_data, train_y_true = train_y_true, train_y_raw = train_y_raw, rf_stack_mode = rf_stack_mode)
+                    # ensemble_train_y_pred[!is.finite(ensemble_train_y_pred)] <- NA
 
-                        # mod_weight <- 1/colMeans(ensemble_train_y_pred, na.rm = T)
-                        mod_weight <- 1/exp(colMeans(ensemble_train_y_pred, na.rm = T))
-                        mod_weight_normlised <- mod_weight/sum(mod_weight)
+                    # mod_weight <- 1/colMeans(ensemble_train_y_pred, na.rm = T)
+                    mod_weight <- 1/exp(colMeans(ensemble_train_y_pred, na.rm = T))
+                    mod_weight_normlised <- mod_weight/sum(mod_weight)
 
-                        ensemble_test_y_pred <- lapply(ensemble_y_pred_rf, function(x) x$pred_test)
-                        ensemble_test_y_pred <- as.data.frame(do.call("rbind", ensemble_test_y_pred))
-                        if (nrow(ensemble_test_y_pred) != length(mod_weight_normlised)) stop("ERROR: mod weights cannot match!")
-                        ensemble_test_y_pred_weighted <- sapply(ensemble_test_y_pred, function(x, mod_weight_normlised) {
-                            sum(x * mod_weight_normlised)
-                        }, mod_weight_normlised = mod_weight_normlised)
-                        test_y_pred <- ensemble_test_y_pred_weighted
-                    } else {
-                        ensemble_test_y_pred <- lapply(ensemble_y_pred_rf, function(x) x$pred_test)
-                        ensemble_test_y_pred <- as.data.frame(do.call("rbind", ensemble_test_y_pred))
-
-                        test_y_pred_rf_ensemble <- sapply(ensemble_test_y_pred, mean, na.rm = T)
-                        test_y_pred <- test_y_pred_rf_ensemble
-                    }
+                    ensemble_test_y_pred <- lapply(ensemble_y_pred_rf, function(x) x$pred_test)
+                    ensemble_test_y_pred <- as.data.frame(do.call("rbind", ensemble_test_y_pred))
+                    if (nrow(ensemble_test_y_pred) != length(mod_weight_normlised)) stop("ERROR: mod weights cannot match!")
+                    ensemble_test_y_pred_weighted <- sapply(ensemble_test_y_pred, function(x, mod_weight_normlised) {
+                        sum(x * mod_weight_normlised)
+                    }, mod_weight_normlised = mod_weight_normlised)
+                    test_y_pred <- ensemble_test_y_pred_weighted
 
                     test_y_pred <- test_y_pred
                 } else stop("ERROR: Wrong method name!")

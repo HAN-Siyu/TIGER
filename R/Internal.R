@@ -116,8 +116,10 @@ Internal.select_variable <- function(cor_info, min_var_num = NULL,
                                                              train_cor, test_cor,
                                                              min_var_num, max_var_num) {
         pbapply::setTimerProgressBar(pb, var_idx)
+
         input_one_variable_name <- variable_name[[var_idx]]
         correlated_train <- abs(train_cor[input_one_variable_name])
+        # correlated_train <- correlated_train[!row.names(correlated_train) %in% input_one_variable_name,,drop = FALSE]
         correlated_train <- correlated_train[order(correlated_train[[1]], decreasing = TRUE),,drop = FALSE]
 
         correlated_train_name <- row.names(correlated_train)
@@ -126,6 +128,7 @@ Internal.select_variable <- function(cor_info, min_var_num = NULL,
 
         if (!is.null(test_cor)) {
             correlated_test <- abs(test_cor[input_one_variable_name])
+            # correlated_test <- correlated_test[!row.names(correlated_test) %in% input_one_variable_name,,drop = FALSE]
             correlated_test <- correlated_test[order(correlated_test[[1]], decreasing = TRUE),,drop = FALSE]
 
             correlated_test_name <- row.names(correlated_test)
@@ -147,16 +150,11 @@ Internal.select_variable <- function(cor_info, min_var_num = NULL,
                     candidate_var_name_tmp <- intersect(candidate_train_name_tmp, candidate_test_name_tmp)
                     if (length(candidate_var_name_tmp) < min_var_num) {
                         current_upper_limit <- current_upper_limit + 1
-                        # if (current_upper_limit > length(correlated_test_name)) {
-                        #     message(input_one_variable_name, " - min candidate: limit greater than var length.")
-                        #     break
-                        # }
                     } else {
                         selected_var_name <- candidate_var_name_tmp
                         break
                     }
                 }
-
             }
 
         } else if (length(candidate_var_name) > max_var_num) {
@@ -173,16 +171,14 @@ Internal.select_variable <- function(cor_info, min_var_num = NULL,
 
                     if (length(candidate_var_name_tmp) < max_var_num) {
                         upper_limit <- upper_limit + 1
-                        # if (upper_limit > length(correlated_test_name)) {
-                        #     message(input_one_variable_name, " - max candidate: limit greater than var length.")
-                        #     break
-                        # }
-                    } else {
                         selected_var_name <- candidate_var_name_tmp
+                    } else if (length(candidate_var_name_tmp) == max_var_num) {
+                        selected_var_name <- candidate_var_name_tmp
+                        break
+                    } else {
                         break
                     }
                 }
-
             }
 
         } else {
@@ -212,8 +208,8 @@ select_variable <- function(train_num, test_num = NULL,
     min_var_num <- ifelse(is.null(min_var_num), 1, min_var_num)
     max_var_num <- ifelse(is.null(max_var_num), ncol(train_num), max_var_num)
 
-    min_var_num <- as.integer(min_var_num)
-    max_var_num <- as.integer(max_var_num)
+    min_var_num <- as.integer(min_var_num) + 1 # add 1 as the current variable itself is included here,
+    max_var_num <- as.integer(max_var_num) + 1 # but the current variable will be removed when training the model.
 
     if (min_var_num < 1) stop("  - min_var_num must be a positive integer!")
     if (max_var_num > ncol(train_num)) stop("  - max_var_num cannot be greater than variable number!")
@@ -343,19 +339,19 @@ compute_targetVal <- function(QC_data, col_sampleType, col_batchID,
     target_values
 }
 
-Internal.compute_errorRatio <- function(train_samples, col_sampleType,
+Internal.compute_errorRatio <- function(input_samples, col_sampleType,
                                         targetVal_df, current_var) {
 
-    out <- sapply(1:nrow(train_samples), function(row_idx, train_samples,
+    out <- sapply(1:nrow(input_samples), function(row_idx, input_samples,
                                                   col_sampleType, targetVal_df,
                                                   current_var) {
 
-        targetVal <- targetVal_df[row.names(targetVal_df) == train_samples[[col_sampleType]] [row_idx],] [[current_var]]
-        rawVal <- train_samples[[current_var]][row_idx]
+        targetVal <- targetVal_df[row.names(targetVal_df) == input_samples[[col_sampleType]] [row_idx],] [[current_var]]
+        rawVal <- input_samples[[current_var]][row_idx]
         errorRatio <- ifelse(targetVal == 0, 0, (rawVal - targetVal) / targetVal)
         out <- c(errorRatio = errorRatio, targetVal = targetVal, rawVal = rawVal)
 
-    }, train_samples = train_samples, col_sampleType = col_sampleType,
+    }, input_samples = input_samples, col_sampleType = col_sampleType,
     targetVal_df = targetVal_df, current_var = current_var)
 
     out_df <- data.frame(t(out))
@@ -518,12 +514,13 @@ run_TIGER <- function(test_samples, train_samples,
                                          max_var_num = max_var_num,
                                          coerce_numeric = TRUE)
     idx_test_na <- is.na(test_samples)
-    test_samples[idx_test_na] <- 0
-    train_samples[is.na(train_samples)] <- 0
+    idx_train_na <- is.na(train_samples)
+    if (any(idx_test_na))  test_samples[idx_test_na]   <- 0
+    if (any(idx_train_na)) train_samples[idx_train_na] <- 0
 
     message("+ Data correction started.   ", Sys.time())
     message("  - Creating clusters...")
-    cl <- parallel::makeCluster(parallel.cores)
+    cl <- parallel::makeCluster(parallel.cores, outfile = "log")
     parallel::clusterExport(cl = cl, varlist = c("Internal.compute_errorRatio", "Internal.run_ensemble"))
     pbapply::pboptions(type = "timer", style = 3, char = "=", txt.width = 70)
 
@@ -536,15 +533,16 @@ run_TIGER <- function(test_samples, train_samples,
                                                      train_samples, test_samples, col_sampleID, col_sampleType,
                                                      col_batchID, col_order, col_position, batchID, mtry_ratio,
                                                      targetVal_method, nodesize_ratio, ...) {
-
+        message("into loop of var")
         if (!correlation_batchWise) {
             train_X_selected_var <- train_samples[c(col_sampleID, col_sampleType, col_batchID,
                                                     col_order, col_position,
                                                     var_selected_list$wholeDataset[[current_var]]) ]
+
         }
 
         if (!targetVal_batchWise) {
-            train_y_all <- Internal.compute_errorRatio(train_samples = train_samples[!names(train_samples) %in% c(col_sampleID, col_batchID, col_order, col_position)],
+            train_y_all <- Internal.compute_errorRatio(input_samples = train_samples[!names(train_samples) %in% c(col_sampleID, col_batchID, col_order, col_position)],
                                                        col_sampleType = col_sampleType,
                                                        targetVal_df = targetVal_list$wholeDataset,
                                                        current_var = current_var)
@@ -555,17 +553,18 @@ run_TIGER <- function(test_samples, train_samples,
         test_data <- cbind(y_raw = test_samples[[current_var]], test_samples)
 
         res_batch_list <- lapply(batchID, function(current_batch) {
-
+            message("into loop of batch")
             if (correlation_batchWise) {
                 train_X_selected_var <- train_samples[c(col_sampleID, col_sampleType, col_batchID,
                                                         col_order, col_position,
                                                         var_selected_list[[current_batch]][[current_var]]) ]
+
             }
 
             if (targetVal_batchWise) {
                 train_X_batch <- train_X_selected_var[train_X_selected_var[[col_batchID]] == current_batch,]
 
-                train_y_batch <- Internal.compute_errorRatio(train_samples = train_X_batch[!names(train_X_batch) %in% c(col_sampleID, col_batchID, col_order, col_position)],
+                train_y_batch <- Internal.compute_errorRatio(input_samples = train_X_batch[!names(train_X_batch) %in% c(col_sampleID, col_batchID, col_order, col_position)],
                                                              col_sampleType = col_sampleType,
                                                              targetVal_df = targetVal_list[[current_batch]],
                                                              current_var = current_var)
@@ -576,26 +575,28 @@ run_TIGER <- function(test_samples, train_samples,
                 train_data <- train_data_all[train_data_all[[col_batchID]] == current_batch,]
             }
 
-            trainSet <- train_data[!names(train_data) %in% c(col_sampleID, col_sampleType, col_batchID)]
+            trainSet <- train_data[!names(train_data) %in% c(col_sampleID, col_sampleType, col_batchID, current_var)]
             testSet  <- test_data[test_data[[col_batchID]] == current_batch,]
 
-            trainSet[[current_var]] <- NULL
-
+            message("into ensemble")
+            cat("current var:", current_var, "current batch:", current_batch,
+                "selected var:", names(trainSet))
             var_pred <- Internal.run_ensemble(trainSet = trainSet, testSet = testSet,
                                               mtry_ratio = seq(0.2, 0.8, 0.2),
                                               nodesize_ratio = seq(0.2, 0.8, 0.2),
                                               ... = ..., return_base_res = FALSE)
 
             if (targetVal_batchWise) {
+                message("out ensemble, targetVal_batchWise - convert back")
                 test_targetVal_all   <- do.call(targetVal_method, list(test_data$y_raw, na.rm = TRUE))
                 test_targetVal_batch <- do.call(targetVal_method, list(testSet$y_raw,   na.rm = TRUE))
                 var_pred <- var_pred * test_targetVal_all / test_targetVal_batch
             }
-
+            message("assign names")
             names(var_pred) <- testSet$original_idx
             var_pred
         })
-
+        message("out loop of batch")
         res_batch       <- do.call("c", res_batch_list)
         res_batch_order <- res_batch[order(as.numeric(names(res_batch)))]
         res_batch_df    <- data.frame(res_batch_order)
@@ -626,7 +627,7 @@ run_TIGER <- function(test_samples, train_samples,
     test_samples[is.na(test_samples)] <- as.numeric(test_samples_bak[is.na(test_samples)])
     test_samples[test_samples < 0]    <- as.numeric(test_samples_bak[test_samples < 0])
     test_samples[test_samples_bak == 0] <- 0
-    test_samples[idx_test_na] <- NA
+    if (any(idx_test_na)) test_samples[idx_test_na] <- NA
 
     message("+ Completed.   ", Sys.time())
     test_samples
