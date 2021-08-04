@@ -338,7 +338,8 @@ run_TIGER <- function(test_samples, train_samples,
 
             train_data_all <- cbind(y_target = train_y_all$targetVal, y_raw = train_y_all$rawVal,
                                     y = train_y_all$errorRatio,
-                                    train_samples[var_selected_list[[current_batch]][[current_var]]])
+                                    train_samples[ c(col_order, col_position,
+                                                     var_selected_list$wholeDataset[[current_var]]) ])
         }
         test_data <- cbind(y_raw = test_samples[[current_var]], test_samples)
 
@@ -353,15 +354,17 @@ run_TIGER <- function(test_samples, train_samples,
 
                 trainSet <- cbind(y_target = train_y_batch$targetVal, y_raw = train_y_batch$rawVal,
                                   y = train_y_batch$errorRatio,
-                                  train_X_batch[var_selected_list[[current_batch]][[current_var]]])
+                                  train_X_batch[ c(col_order, col_position,
+                                                   var_selected_list[[current_batch]][[current_var]]) ])
             } else {
-                trainSet <- train_data_all[train_data_all[[col_batchID]] == current_batch,]
+                trainSet <- train_data_all[train_samples[[col_batchID]] == current_batch,]
             }
 
             testSet  <- test_data[test_data[[col_batchID]] == current_batch,]
 
             message("debug: into ensemble")
             cat("debug: current var:", current_var, "current batch:", current_batch,
+                "shape:", nrow(trainSet), "*", ncol(trainSet),
                 "selected var:", names(trainSet))
             var_pred <- Internal.run_ensemble(trainSet = trainSet, testSet = testSet,
                                               mtry_percent = seq(0.2, 0.8, 0.2),
