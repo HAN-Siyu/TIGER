@@ -106,7 +106,7 @@ Internal.select_variable <- function(cor_info, min_var_num = NULL,
 
     pb <- pbapply::timerProgressBar(min = 0, max = length(variable_name),
                                     initial = 0, style = 3, width = 70,
-                                    min_time = 10)
+                                    min_time = 20)
     selected_var <- lapply(1:length(variable_name), function(var_idx,
                                                              variable_name,
                                                              train_cor, test_cor,
@@ -214,14 +214,14 @@ Internal.compute_errorRatio <- function(rawVal, sampleType,
         current_targetVal <- targetVal[row.names(targetVal) == sampleType[val_idx],] [[1]]
         current_rawVal <- rawVal[val_idx]
         errorRatio <- ifelse(current_targetVal == 0, 0, (current_rawVal - current_targetVal) / current_targetVal)
-        out <- c(errorRatio = errorRatio, targetVal = current_targetVal, rawVal = current_rawVal)
-
+        out <- c(y = errorRatio, y_target = current_targetVal, y_raw = current_rawVal)
+        out
     }, rawVal = rawVal, sampleType = sampleType, targetVal = targetVal)
 
     out_df <- data.frame(t(out))
 
-    if (all(out_df$errorRatio == 0)) {
-        out_df$errorRatio <- rnorm(length(out_df$errorRatio), sd = 0.001, mean = 0.0005)
+    if (all(out_df$y == 0)) {
+        out_df$y <- rnorm(length(out_df$y), sd = 0.001, mean = 0.0005)
     }
     out_df
 }

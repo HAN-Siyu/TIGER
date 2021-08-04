@@ -236,7 +236,7 @@ run_TIGER <- function(test_samples, train_samples,
                       min_var_num = 5, max_var_num = 10,
                       mtry_percent = seq(0.2, 0.8, 0.2),
                       nodesize_percent = seq(0.2, 0.8, 0.2),
-                      ..., parallel.cores = 2) {
+                      ..., parallel.cores = 2, logName) {
 
     message("+ Initialising...   ", Sys.time())
 
@@ -317,7 +317,7 @@ run_TIGER <- function(test_samples, train_samples,
 
     message("+ Data correction started.   ", Sys.time())
     message("  - Creating clusters...")
-    cl <- parallel::makeCluster(parallel.cores, outfile = "log")
+    cl <- parallel::makeCluster(parallel.cores, outfile = logName)
     parallel::clusterExport(cl = cl, varlist = c("Internal.compute_errorRatio", "Internal.run_ensemble"))
     pbapply::pboptions(type = "timer", style = 3, char = "=", txt.width = 70)
 
@@ -336,36 +336,40 @@ run_TIGER <- function(test_samples, train_samples,
                                                        sampleType = train_samples[[col_sampleType]],
                                                        targetVal  = targetVal_list$wholeDataset[current_var])
 
-            train_data_all <- cbind(y_target = train_y_all$targetVal, y_raw = train_y_all$rawVal,
-                                    y = train_y_all$errorRatio,
-                                    train_samples[ c(col_order, col_position,
-                                                     var_selected_list$wholeDataset[[current_var]]) ])
         }
+
         test_data <- cbind(y_raw = test_samples[[current_var]], test_samples)
 
         res_batch_list <- lapply(batchID, function(current_batch) {
             message("debug: into loop of batch")
-            if (targetVal_batchWise) {
-                train_X_batch <- train_samples[train_samples[[col_batchID]] == current_batch,]
 
+            train_X_batch <- train_samples[train_samples[[col_batchID]] == current_batch,]
+
+            if (targetVal_batchWise) {
                 train_y_batch <- Internal.compute_errorRatio(rawVal     = train_X_batch[[current_var]],
                                                              sampleType = train_X_batch[[col_sampleType]],
                                                              targetVal  = targetVal_list[[current_batch]][current_var])
 
-                trainSet <- cbind(y_target = train_y_batch$targetVal, y_raw = train_y_batch$rawVal,
-                                  y = train_y_batch$errorRatio,
-                                  train_X_batch[ c(col_order, col_position,
-                                                   var_selected_list[[current_batch]][[current_var]]) ])
+
             } else {
-                trainSet <- train_data_all[train_samples[[col_batchID]] == current_batch,]
+                train_y_batch <- train_y_all[train_samples[[col_batchID]] == current_batch,]
             }
 
+            if (correlation_batchWise) {
+                train_X_selected <- train_X_batch[ c(col_order, col_position,
+                                                     var_selected_list[[current_batch]][[current_var]]) ]
+            } else {
+                train_X_selected <- train_X_batch[ c(col_order, col_position,
+                                                     var_selected_list$wholeDataset[[current_var]]) ]
+            }
+
+            trainSet <- cbind(train_y_batch, train_X_selected)
             testSet  <- test_data[test_data[[col_batchID]] == current_batch,]
 
             message("debug: into ensemble")
             cat("debug: current var:", current_var, "current batch:", current_batch,
                 "shape:", nrow(trainSet), "*", ncol(trainSet),
-                "selected var:", names(trainSet))
+                "selected var:", names(trainSet), "\n")
             var_pred <- Internal.run_ensemble(trainSet = trainSet, testSet = testSet,
                                               mtry_percent = seq(0.2, 0.8, 0.2),
                                               nodesize_percent = seq(0.2, 0.8, 0.2),
