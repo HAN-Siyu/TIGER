@@ -32,6 +32,8 @@ compute_targetVal <- function(QC_num, sampleType, batchID,
                               targetVal_removeOutlier = !targetVal_batchWise,
                               coerce_numeric = FALSE) {
 
+    message("+ Computing target values...   ", Sys.time())
+
     targetVal_method   <- match.arg(targetVal_method)
 
     sampleType <- as.factor(sampleType)
@@ -44,7 +46,7 @@ compute_targetVal <- function(QC_num, sampleType, batchID,
         })
         QC_num <- QC_num[,!idx_NA]
     } else {
-        if (!all(sapply(QC_num, is.numeric))) stop("The values of the input dataset (QC_num) should be numeric!")
+        if (!all(sapply(QC_num, is.numeric))) stop("  The values of the input dataset (QC_num) should be numeric!")
     }
 
     if (targetVal_batchWise) {
@@ -99,6 +101,8 @@ select_variable <- function(train_num, test_num = NULL,
                             min_var_num = 5, max_var_num = 10,
                             coerce_numeric = FALSE) {
 
+    message("+ Selecting highly-correlated variables...   ", Sys.time())
+
     correlation_type   <- match.arg(correlation_type)
 
     min_var_num <- ifelse(is.null(min_var_num), 1, min_var_num)
@@ -109,8 +113,8 @@ select_variable <- function(train_num, test_num = NULL,
     min_var_num <- as.integer(min_var_num)
     max_var_num <- as.integer(max_var_num)
 
-    if (min_var_num < 1) stop("    min_var_num must be a positive integer!")
-    if (max_var_num > ncol(train_num)) stop("    max_var_num cannot be greater than variable number!")
+    if (min_var_num < 1) stop("  min_var_num must be a positive integer!")
+    if (max_var_num > ncol(train_num)) stop("  max_var_num cannot be greater than variable number!")
 
     if(coerce_numeric) {
         train_num <- as.data.frame(sapply(train_num, as.numeric))
@@ -127,12 +131,12 @@ select_variable <- function(train_num, test_num = NULL,
             test_num <- test_num[,!idx_NA]
         }
     } else {
-        if (!all(sapply(train_num, is.numeric))) stop("    The values of train samples should be numeric!")
-        if (!is.null(test_num) & !all(sapply(test_num, is.numeric))) stop("    The values of test samples should be numeric!")
+        if (!all(sapply(train_num, is.numeric))) stop("  The values of train samples should be numeric!")
+        if (!is.null(test_num) & !all(sapply(test_num, is.numeric))) stop("  The values of test samples should be numeric!")
     }
 
     if (!is.null(test_num)) {
-        if (any(names(train_num) != names(test_num))) stop("    Variables in training and test data cannot match!")
+        if (any(names(train_num) != names(test_num))) stop("  Variables in training and test data cannot match!")
     }
 
     if (correlation_batchWise) {
@@ -245,39 +249,44 @@ run_TIGER <- function(test_samples, train_samples,
     }
 
     if (!is.null(col_order)) {
-        if (anyNA(test_samples[[col_order]])  | any(!is.finite(test_samples[[col_order]]))  ) stop("    test samples: col_order should be numeric only!")
-        if (anyNA(train_samples[[col_order]]) | any(!is.finite(train_samples[[col_order]])) ) stop("    train samples: col_order should be numeric only!")
+        if (anyNA(test_samples[[col_order]])  | any(!is.finite(test_samples[[col_order]]))  ) stop("  test samples: col_order should be numeric only!")
+        if (anyNA(train_samples[[col_order]]) | any(!is.finite(train_samples[[col_order]])) ) stop("  train samples: col_order should be numeric only!")
     }
 
     if (!is.null(col_position)) {
-        if (anyNA(test_samples[[col_position]])  | any(!is.finite(test_samples[[col_position]]))  ) stop("    test samples: col_position should be numeric only!")
-        if (anyNA(train_samples[[col_position]]) | any(!is.finite(train_samples[[col_position]])) ) stop("    train samples: col_position should be numeric only!")
+        if (anyNA(test_samples[[col_position]])  | any(!is.finite(test_samples[[col_position]]))  ) stop("  test samples: col_position should be numeric only!")
+        if (anyNA(train_samples[[col_position]]) | any(!is.finite(train_samples[[col_position]])) ) stop("  train samples: col_position should be numeric only!")
     }
 
     if (!all(sapply(train_samples[!names(train_samples) %in% c(col_sampleID, col_sampleType, col_batchID)], is.numeric))) {
-        stop("    The values of train samples (except sampleType and batchID) should be numeric!")
+        stop("  The values of train samples (except sampleType and batchID) should be numeric!")
     }
 
     if (!all(sapply(test_samples[!names(test_samples) %in%c(col_sampleID, col_sampleType, col_batchID)], is.numeric))) {
-        stop("    The values of test samples (except sampleType and batchID) should be numeric!")
+        stop("  The values of test samples (except sampleType and batchID) should be numeric!")
     }
+
+    # To check infinite values. - Deprecated. Infinite values are not allowed.
+    # train_samples_list  <- split(train_samples, f = train_samples[[col_sampleType]])
+    # train_samples_check <- lapply(train_samples_list, Internal.impute_infinite)
+    # train_samples <- do.call("rbind", train_samples_check)
+    # test_samples  <- Internal.impute_infinite(test_samples)
 
     test_samples_bak <- test_samples
 
     batchID_train <- unique(train_samples[[col_batchID]])
     batchID_test  <- unique(test_samples[[col_batchID]])
 
-    if(!all(batchID_test %in% batchID_train)) stop("    The batchID in train and test samples cannot match!")
+    if(!all(batchID_test %in% batchID_train)) stop("  The batchID in train and test samples cannot match!")
     batchID <- batchID_test
 
     train_num <- train_samples[!names(train_samples) %in% c(col_sampleID, col_sampleType, col_batchID, col_order, col_position)]
     test_num  <- test_samples[!names(test_samples) %in% c(col_sampleID, col_sampleType, col_batchID, col_order, col_position)]
 
-    if ((length(train_num) != length(test_num)) | any(!names(train_num) %in% names(test_num))) stop("    Varibale names in the train and test samples cannot match!")
+    if ((length(train_num) != length(test_num)) | any(!names(train_num) %in% names(test_num))) stop("  Varibale names in the train and test samples cannot match!")
 
     # Target value computation
     if (is.null(targetVal_external)) {
-        message("+ Computing target values...   ", Sys.time())
         targetVal_list <- compute_targetVal(QC_num = train_num,
                                             sampleType = train_samples[[col_sampleType]],
                                             batchID    = train_samples[[col_batchID]],
@@ -291,14 +300,6 @@ run_TIGER <- function(test_samples, train_samples,
     }
 
     # Variable selection
-    message("+ Selecting highly-correlated variables...   ", Sys.time())
-
-    # To check infinite values. - Deprecated. Infinite values are not allowed.
-    # train_samples_list  <- split(train_samples, f = train_samples[[col_sampleType]])
-    # train_samples_check <- lapply(train_samples_list, Internal.impute_infinite)
-    # train_samples <- do.call("rbind", train_samples_check)
-    # test_samples  <- Internal.impute_infinite(test_samples)
-
     var_selected_list <- select_variable(train_num = train_num, test_num = test_num,
                                          train_batchID = train_samples[[col_batchID]],
                                          test_batchID  = test_samples[[col_batchID]],
@@ -308,7 +309,7 @@ run_TIGER <- function(test_samples, train_samples,
                                          min_var_num = min_var_num,
                                          max_var_num = max_var_num,
                                          coerce_numeric = TRUE)
-    idx_test_na <- is.na(test_samples)
+    idx_test_na  <- is.na(test_samples)
     idx_train_na <- is.na(train_samples)
     if (any(idx_test_na))  test_samples[idx_test_na]   <- 0
     if (any(idx_train_na)) train_samples[idx_train_na] <- 0
@@ -397,15 +398,19 @@ run_TIGER <- function(test_samples, train_samples,
     check_order <- sapply(res_var[-1], function(x) {
         any(row.names(x) != row.names(res_var[[1]]))
     })
-    if (any(check_order)) stop("Error occurs when merging data!")
+    if (any(check_order)) stop("    Error occurs when merging data!")
 
     res_var_df <- do.call("cbind", res_var)
 
     test_samples[names(res_var_df)] <- res_var_df
     test_samples$original_idx <- NULL
 
-    test_samples[is.na(test_samples)] <- as.numeric(test_samples_bak[is.na(test_samples)])
-    test_samples[test_samples < 0]    <- as.numeric(test_samples_bak[test_samples < 0])
+    idx_norm_na <- is.na(test_samples)
+    if (any(idx_norm_na)) test_samples[idx_norm_na] <- as.numeric(test_samples_bak[idx_norm_na])
+
+    idx_norm_zero <- test_samples < 0
+    if (any(idx_norm_zero)) test_samples[idx_norm_zero] <- as.numeric(test_samples_bak[idx_norm_zero])
+
     test_samples[test_samples_bak == 0] <- 0
     if (any(idx_test_na)) test_samples[idx_test_na] <- NA
 
