@@ -1,8 +1,3 @@
-compute_RSD <- function(input_data) {
-    val_RSD <- sd(input_data, na.rm = T) / mean(input_data, na.rm = T)
-    val_RSD
-}
-
 Internal.boxplot.stats <- function(x, coef = 1.5, do.conf = TRUE, do.out = TRUE) {
     if (coef < 0)
         stop("'coef' must not be negative")
@@ -38,13 +33,13 @@ Internal.remove_NA <- function(input_data_num, data_label = NULL,
     data_na_sample_sum <- sum(data_na_sample_idx)
 
     if (data_na_sample_sum > 0) {
-        if (!is.null(data_label)) warning(paste0("  - ", data_na_sample_sum, " sample(s) in ", data_label, " contain(s) NA."))
+        if (!is.null(data_label)) warning(paste0("    ", data_na_sample_sum, " sample(s) in ", data_label, " contain(s) NA."))
 
         if (replace_with_zero) {
             input_data_num[is.na(input_data_num)] <- 0
         } else {
             input_data_num <- input_data_num[!data_na_sample_idx,]
-            if (nrow(input_data_num) == 0) stop(paste0("  - Variable selection failed: ", data_label, " contain too many NA!"))
+            if (nrow(input_data_num) == 0) stop(paste0("    Variable selection failed: ", data_label, " contain too many NA!"))
         }
     }
 
@@ -119,7 +114,7 @@ Internal.select_variable <- function(cor_info, min_var_num = NULL,
 
         input_one_variable_name <- variable_name[[var_idx]]
         correlated_train <- abs(train_cor[input_one_variable_name])
-        # correlated_train <- correlated_train[!row.names(correlated_train) %in% input_one_variable_name,,drop = FALSE]
+        correlated_train <- correlated_train[!row.names(correlated_train) %in% input_one_variable_name,,drop = FALSE]
         correlated_train <- correlated_train[order(correlated_train[[1]], decreasing = TRUE),,drop = FALSE]
 
         correlated_train_name <- row.names(correlated_train)
@@ -128,7 +123,7 @@ Internal.select_variable <- function(cor_info, min_var_num = NULL,
 
         if (!is.null(test_cor)) {
             correlated_test <- abs(test_cor[input_one_variable_name])
-            # correlated_test <- correlated_test[!row.names(correlated_test) %in% input_one_variable_name,,drop = FALSE]
+            correlated_test <- correlated_test[!row.names(correlated_test) %in% input_one_variable_name,,drop = FALSE]
             correlated_test <- correlated_test[order(correlated_test[[1]], decreasing = TRUE),,drop = FALSE]
 
             correlated_test_name <- row.names(correlated_test)
@@ -194,90 +189,6 @@ Internal.select_variable <- function(cor_info, min_var_num = NULL,
     selected_var
 }
 
-select_variable <- function(train_num, test_num = NULL,
-                            train_batchID = NULL, test_batchID = NULL,
-                            batchWise = FALSE,
-                            correlation_type = c("pcor", "cor"),
-                            correlation_method = c("spearman", "pearson"),
-                            min_var_num = NULL, max_var_num = NULL,
-                            coerce_numeric = FALSE) {
-
-    correlation_type   <- match.arg(correlation_type)
-    correlation_method <- match.arg(correlation_method)
-
-    min_var_num <- ifelse(is.null(min_var_num), 1, min_var_num)
-    max_var_num <- ifelse(is.null(max_var_num), ncol(train_num), max_var_num)
-
-    min_var_num <- as.integer(min_var_num) + 1 # add 1 as the current variable itself is included here,
-    max_var_num <- as.integer(max_var_num) + 1 # but the current variable will be removed when training the model.
-
-    if (min_var_num < 1) stop("  - min_var_num must be a positive integer!")
-    if (max_var_num > ncol(train_num)) stop("  - max_var_num cannot be greater than variable number!")
-
-    if(coerce_numeric) {
-        train_num <- as.data.frame(sapply(train_num, as.numeric))
-        idx_NA <- sapply(train_num, function(x) {
-            all(is.na(x))
-        })
-        train_num <- train_num[,!idx_NA]
-
-        if (!is.null(test_num)) {
-            test_num <- as.data.frame(sapply(test_num, as.numeric))
-            idx_NA <- sapply(test_num, function(x) {
-                all(is.na(x))
-            })
-            test_num <- test_num[,!idx_NA]
-        }
-    } else {
-        if (!all(sapply(train_num, is.numeric))) stop("  - The values of train samples should be numeric!")
-        if (!is.null(test_num) & !all(sapply(test_num, is.numeric))) stop("  - The values of test samples should be numeric!")
-    }
-
-    if (!is.null(test_num)) {
-        if (any(names(train_num) != names(test_num))) stop("  - Variables in training and test data cannot match!")
-    }
-
-    if (batchWise) {
-        train_num_list <- split(train_num, f = train_batchID)
-        test_num_list  <- split(test_num,  f = test_batchID)
-
-        batch_names_train <- sort(names(train_num_list))
-        batch_names_test  <- sort(names(test_num_list))
-        batch_names_len   <- length(batch_names_train)
-        if (!all(batch_names_train == batch_names_test) | batch_names_len != length(batch_names_test)) stop("    Batch names of train and test samples cannot match!")
-
-        selected_var_list <- lapply(1:batch_names_len, function(batch_name_idx) {
-
-            one_batch_name <- batch_names_train[[batch_name_idx]]
-            message("  - Current batch: ", one_batch_name, "  (", batch_name_idx, "/", batch_names_len, ")")
-
-            message("    Computing correlation coefficients...")
-            cor_info <- Internal.compute_cor(train_num = train_num_list[[one_batch_name]],
-                                             test_num = test_num_list[[one_batch_name]],
-                                             correlation_type = correlation_type,
-                                             correlation_method = correlation_method)
-
-            message("    Selecting variables...")
-            selected_var <- Internal.select_variable(cor_info = cor_info,
-                                                     min_var_num = min_var_num,
-                                                     max_var_num = max_var_num)
-        })
-        names(selected_var_list) <- batch_names_train
-    } else {
-        message("  - Computing correlation coefficients...")
-        cor_info <- Internal.compute_cor(train_num = train_num, test_num = test_num,
-                                         correlation_type = correlation_type,
-                                         correlation_method = correlation_method)
-        message("  - Selecting variables...")
-        selected_var <- Internal.select_variable(cor_info = cor_info,
-                                                 min_var_num = min_var_num,
-                                                 max_var_num = max_var_num)
-        selected_var_list <- list(wholeDataset = selected_var)
-    }
-
-    selected_var_list
-}
-
 Internal.compute_targetVal <- function(input_col, targetVal_method = c("median", "mean"),
                                        targetVal_removeOutlier = TRUE) {
 
@@ -292,51 +203,6 @@ Internal.compute_targetVal <- function(input_col, targetVal_method = c("median",
         res <- median(input_col, na.rm = T)
     }
     res
-}
-
-compute_targetVal <- function(QC_data, col_sampleType, col_batchID,
-                              targetVal_method = c("median", "mean"),
-                              batchWise = FALSE,
-                              targetVal_removeOutlier = !batchWise,
-                              coerce_numeric = FALSE) {
-
-    targetVal_method   <- match.arg(targetVal_method)
-
-    sampleID <- as.factor(QC_data[[col_sampleType]])
-    batchID  <- as.factor(QC_data[[col_batchID]])
-    data_numeric <- QC_data[!names(QC_data) %in% c(col_sampleType, col_batchID)]
-
-    if(coerce_numeric) {
-        data_numeric <- as.data.frame(sapply(data_numeric, as.numeric))
-        idx_NA <- sapply(data_numeric, function(x) {
-            all(is.na(x))
-        })
-        data_numeric <- data_numeric[,!idx_NA]
-    } else {
-        if (!all(sapply(data_numeric, is.numeric))) stop("The values of the input dataset (except sampleType and batchID) should be numeric!")
-    }
-
-    if (batchWise) {
-        target_values <- aggregate(data_numeric, by = list(batch = batchID, sample = sampleID),
-                                   FUN = Internal.compute_targetVal, targetVal_method = targetVal_method,
-                                   targetVal_removeOutlier = targetVal_removeOutlier)
-        batchID <- target_values$batch
-        target_values$batch <- NULL
-        target_values_list <- split(target_values, f = batchID)
-    } else {
-        target_values_list <- list(wholeDataset = aggregate(data_numeric,
-                                                            by = list(sample = sampleID),
-                                                            FUN =  Internal.compute_targetVal,
-                                                            targetVal_method = targetVal_method,
-                                                            targetVal_removeOutlier = targetVal_removeOutlier))
-    }
-
-    target_values <- lapply(target_values_list, function(x) {
-        row.names(x) <- x$sample
-        x$sample <- NULL
-        x
-    })
-    target_values
 }
 
 Internal.compute_errorRatio <- function(input_samples, col_sampleType,
@@ -363,12 +229,12 @@ Internal.compute_errorRatio <- function(input_samples, col_sampleType,
 }
 
 Internal.run_ensemble <- function(trainSet, testSet,
-                                  mtry_ratio = seq(0.2, 0.8, 0.2),
-                                  nodesize_ratio = seq(0.2, 0.8, 0.2),
+                                  mtry_percent = seq(0.2, 0.8, 0.2),
+                                  nodesize_percent = seq(0.2, 0.8, 0.2),
                                   ..., return_base_res = FALSE) {
 
-    if (!is.null(mtry_ratio)) mtry <- round(mtry_ratio * (ncol(trainSet) - 3))
-    if (!is.null(nodesize_ratio)) nodesize <- round(nodesize_ratio * nrow(trainSet))
+    if (!is.null(mtry_percent)) mtry <- round(mtry_percent * (ncol(trainSet) - 3))
+    if (!is.null(nodesize_percent)) nodesize <- round(nodesize_percent * nrow(trainSet))
 
     rf_hyperparams <- expand.grid(mtry = unique(mtry),
                                   nodesize = unique(nodesize),
@@ -420,215 +286,4 @@ Internal.run_ensemble <- function(trainSet, testSet,
         output <- pred_norm
     }
     output
-}
-
-run_TIGER <- function(test_samples, train_samples,
-                      col_sampleID, col_sampleType, col_batchID,
-                      col_order = NULL, col_position = NULL,
-                      targetVal_external = NULL, targetVal_method = c("mean", "median"),
-                      targetVal_batchWise = FALSE, targetVal_removeOutlier = !targetVal_batchWise,
-                      correlation_type = c("cor", "pcor"),
-                      correlation_method = c("pearson", "spearman"),
-                      correlation_batchWise = targetVal_batchWise,
-                      min_var_num = 10, max_var_num = 30,
-                      mtry_ratio = seq(0.2, 0.8, 0.2),
-                      nodesize_ratio = seq(0.2, 0.8, 0.2),
-                      ..., parallel.cores = 2) {
-
-    message("+ Initialising...   ", Sys.time())
-
-    targetVal_method   <- match.arg(targetVal_method)
-    correlation_type   <- match.arg(correlation_type)
-    correlation_method <- match.arg(correlation_method)
-
-    for (col_idx in c(col_sampleID, col_sampleType, col_batchID)) {
-        test_samples[[col_idx]]  <- as.character(test_samples[[col_idx]])
-        train_samples[[col_idx]] <- as.character(train_samples[[col_idx]])
-    }
-
-    if (!is.null(col_order)) {
-        if (anyNA(test_samples[[col_order]])  | any(!is.finite(test_samples[[col_order]]))  ) stop("  - test samples: col_order should be numeric only!")
-        if (anyNA(train_samples[[col_order]]) | any(!is.finite(train_samples[[col_order]])) ) stop("  - train samples: col_order should be numeric only!")
-    }
-
-    if (!is.null(col_position)) {
-        if (anyNA(test_samples[[col_position]])  | any(!is.finite(test_samples[[col_position]]))  ) stop("  - test samples: col_position should be numeric only!")
-        if (anyNA(train_samples[[col_position]]) | any(!is.finite(train_samples[[col_position]])) ) stop("  - train samples: col_position should be numeric only!")
-    }
-
-    if (!all(sapply(train_samples[!names(train_samples) %in% c(col_sampleID, col_sampleType, col_batchID)], is.numeric))) {
-        stop("  - The values of train samples (except sampleType and batchID) should be numeric!")
-    }
-
-    if (!all(sapply(test_samples[!names(test_samples) %in%c(col_sampleID, col_sampleType, col_batchID)], is.numeric))) {
-        stop("  - The values of test samples (except sampleType and batchID) should be numeric!")
-    }
-
-    test_samples_bak <- test_samples
-
-    batchID_train <- unique(train_samples[[col_batchID]])
-    batchID_test  <- unique(test_samples[[col_batchID]])
-
-    if(!all(batchID_test %in% batchID_train)) stop("  - The batchID in train and test samples cannot match!")
-    batchID <- batchID_test
-
-    # Target value computation
-    if (is.null(targetVal_external)) {
-        message("+ Computing target values...   ", Sys.time())
-        targetVal_list <- compute_targetVal(QC_data = train_samples[!names(train_samples) %in% c(col_sampleID, col_order, col_position)],
-                                            col_sampleType = col_sampleType,
-                                            col_batchID    = col_batchID,
-                                            targetVal_method = targetVal_method,
-                                            batchWise = targetVal_batchWise,
-                                            targetVal_removeOutlier = targetVal_removeOutlier,
-                                            coerce_numeric = FALSE)
-    } else {
-        message("+ External target values loaded.   ", Sys.time())
-        targetVal_list <- targetVal_external
-    }
-
-    # Variable selection
-    message("+ Selecting highly-correlated variables...   ", Sys.time())
-
-    # To check infinite values. - Deprecated. Infinite values are not allowed.
-    # train_samples_list  <- split(train_samples, f = train_samples[[col_sampleType]])
-    # train_samples_check <- lapply(train_samples_list, Internal.impute_infinite)
-    # train_samples <- do.call("rbind", train_samples_check)
-    # test_samples  <- Internal.impute_infinite(test_samples)
-
-    message("  - Checking variable names...")
-    var_names <- names(targetVal_list[[1]])
-    train_num <- train_samples[!names(train_samples) %in% c(col_sampleID, col_sampleType, col_batchID, col_order, col_position)]
-    test_num  <- test_samples[!names(test_samples) %in% c(col_sampleID, col_sampleType, col_batchID, col_order, col_position)]
-
-    if (!all(var_names == names(train_num))) stop("  - Varibale names in the train and test samples cannot match!")
-    if (!all(var_names == names(test_num)))  stop("  - Varibale names in the train and test samples cannot match!")
-
-    var_selected_list <- select_variable(train_num = train_num, test_num = test_num,
-                                         train_batchID = train_samples[[col_batchID]],
-                                         test_batchID  = test_samples[[col_batchID]],
-                                         batchWise = correlation_batchWise,
-                                         correlation_type   = correlation_type,
-                                         correlation_method = correlation_method,
-                                         min_var_num = min_var_num,
-                                         max_var_num = max_var_num,
-                                         coerce_numeric = TRUE)
-    idx_test_na <- is.na(test_samples)
-    idx_train_na <- is.na(train_samples)
-    if (any(idx_test_na))  test_samples[idx_test_na]   <- 0
-    if (any(idx_train_na)) train_samples[idx_train_na] <- 0
-
-    message("+ Data correction started.   ", Sys.time())
-    message("  - Creating clusters...")
-    cl <- parallel::makeCluster(parallel.cores, outfile = "log")
-    parallel::clusterExport(cl = cl, varlist = c("Internal.compute_errorRatio", "Internal.run_ensemble"))
-    pbapply::pboptions(type = "timer", style = 3, char = "=", txt.width = 70)
-
-    # Original sample order backup
-    test_samples <- cbind(original_idx = 1:nrow(test_samples), test_samples)
-
-    message("  - Correcting data...")
-    res_var <- pbapply::pblapply(var_names, function(current_var, var_selected_list, targetVal_list,
-                                                     targetVal_batchWise, correlation_batchWise,
-                                                     train_samples, test_samples, col_sampleID, col_sampleType,
-                                                     col_batchID, col_order, col_position, batchID, mtry_ratio,
-                                                     targetVal_method, nodesize_ratio, ...) {
-        message("into loop of var")
-        if (!correlation_batchWise) {
-            train_X_selected_var <- train_samples[c(col_sampleID, col_sampleType, col_batchID,
-                                                    col_order, col_position,
-                                                    var_selected_list$wholeDataset[[current_var]]) ]
-
-        }
-
-        if (!targetVal_batchWise) {
-            train_y_all <- Internal.compute_errorRatio(input_samples = train_samples[!names(train_samples) %in% c(col_sampleID, col_batchID, col_order, col_position)],
-                                                       col_sampleType = col_sampleType,
-                                                       targetVal_df = targetVal_list$wholeDataset,
-                                                       current_var = current_var)
-
-            train_data_all <- cbind(y_target = train_y_all$targetVal, y_raw = train_y_all$rawVal,
-                                    y = train_y_all$errorRatio, train_X_selected_var)
-        }
-        test_data <- cbind(y_raw = test_samples[[current_var]], test_samples)
-
-        res_batch_list <- lapply(batchID, function(current_batch) {
-            message("into loop of batch")
-            if (correlation_batchWise) {
-                train_X_selected_var <- train_samples[c(col_sampleID, col_sampleType, col_batchID,
-                                                        col_order, col_position,
-                                                        var_selected_list[[current_batch]][[current_var]]) ]
-
-            }
-
-            if (targetVal_batchWise) {
-                train_X_batch <- train_X_selected_var[train_X_selected_var[[col_batchID]] == current_batch,]
-
-                train_y_batch <- Internal.compute_errorRatio(input_samples = train_X_batch[!names(train_X_batch) %in% c(col_sampleID, col_batchID, col_order, col_position)],
-                                                             col_sampleType = col_sampleType,
-                                                             targetVal_df = targetVal_list[[current_batch]],
-                                                             current_var = current_var)
-
-                train_data <- cbind(y_target = train_y_batch$targetVal, y_raw = train_y_batch$rawVal,
-                                    y = train_y_batch$errorRatio, train_X_batch)
-            } else {
-                train_data <- train_data_all[train_data_all[[col_batchID]] == current_batch,]
-            }
-
-            trainSet <- train_data[!names(train_data) %in% c(col_sampleID, col_sampleType, col_batchID, current_var)]
-            testSet  <- test_data[test_data[[col_batchID]] == current_batch,]
-
-            message("into ensemble")
-            cat("current var:", current_var, "current batch:", current_batch,
-                "selected var:", names(trainSet))
-            var_pred <- Internal.run_ensemble(trainSet = trainSet, testSet = testSet,
-                                              mtry_ratio = seq(0.2, 0.8, 0.2),
-                                              nodesize_ratio = seq(0.2, 0.8, 0.2),
-                                              ... = ..., return_base_res = FALSE)
-
-            if (targetVal_batchWise) {
-                message("out ensemble, targetVal_batchWise - convert back")
-                test_targetVal_all   <- do.call(targetVal_method, list(test_data$y_raw, na.rm = TRUE))
-                test_targetVal_batch <- do.call(targetVal_method, list(testSet$y_raw,   na.rm = TRUE))
-                var_pred <- var_pred * test_targetVal_all / test_targetVal_batch
-            }
-            message("assign names")
-            names(var_pred) <- testSet$original_idx
-            var_pred
-        })
-        message("out loop of batch")
-        res_batch       <- do.call("c", res_batch_list)
-        res_batch_order <- res_batch[order(as.numeric(names(res_batch)))]
-        res_batch_df    <- data.frame(res_batch_order)
-
-        names(res_batch_df) <- current_var
-        res_batch_df
-
-    }, var_selected_list = var_selected_list, targetVal_list = targetVal_list,
-    targetVal_batchWise = targetVal_batchWise, correlation_batchWise = correlation_batchWise,
-    train_samples = train_samples, test_samples = test_samples, col_sampleID = col_sampleID,
-    col_sampleType = col_sampleType, col_batchID = col_batchID, col_order = col_order,
-    col_position = col_position, batchID = batchID, mtry_ratio = mtry_ratio,
-    nodesize_ratio = nodesize_ratio, targetVal_method = targetVal_method, ... = ..., cl = cl)
-
-    parallel::stopCluster(cl)
-
-    message("  - Merging results...")
-    check_order <- sapply(res_var[-1], function(x) {
-        any(row.names(x) != row.names(res_var[[1]]))
-    })
-    if (any(check_order)) stop("Error occurs when merging data!")
-
-    res_var_df <- do.call("cbind", res_var)
-
-    test_samples[names(res_var_df)] <- res_var_df
-    test_samples$original_idx <- NULL
-
-    test_samples[is.na(test_samples)] <- as.numeric(test_samples_bak[is.na(test_samples)])
-    test_samples[test_samples < 0]    <- as.numeric(test_samples_bak[test_samples < 0])
-    test_samples[test_samples_bak == 0] <- 0
-    if (any(idx_test_na)) test_samples[idx_test_na] <- NA
-
-    message("+ Completed.   ", Sys.time())
-    test_samples
 }
