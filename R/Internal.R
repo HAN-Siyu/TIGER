@@ -1,5 +1,5 @@
-Internal.boxplot.stats <- function(x, coef = 1.5, do.conf = TRUE,
-                                   do.out = TRUE) { # borrowed from grDevices::boxplot.stats()
+Internal.boxplot.stats <- function(x, # borrowed from grDevices::boxplot.stats()
+                                   coef = 1.5, do.conf = TRUE, do.out = TRUE) {
     if (coef < 0)
         stop("'coef' must not be negative")
     nna <- !is.na(x)

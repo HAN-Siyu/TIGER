@@ -136,7 +136,8 @@ select_variable <- function(train_num, test_num = NULL,
     }
 
     if (!is.null(test_num)) {
-        if (any(names(train_num) != names(test_num))) stop("  Variables in training and test data cannot match!")
+        if (!all(names(test_num) %in% names(train_num))) stop("  Variables in training and test data cannot match!")
+        train_num <- train_num[names(test_num)]
     }
 
     if (correlation_batchWise) {
@@ -281,9 +282,9 @@ run_TIGER <- function(test_samples, train_samples,
     batchID <- batchID_test
 
     train_num <- train_samples[!names(train_samples) %in% c(col_sampleID, col_sampleType, col_batchID, col_order, col_position)]
-    test_num  <- test_samples[!names(test_samples) %in% c(col_sampleID, col_sampleType, col_batchID, col_order, col_position)]
+    test_num  <- test_samples[!names(test_samples)   %in% c(col_sampleID, col_sampleType, col_batchID, col_order, col_position)]
 
-    if ((length(train_num) != length(test_num)) | any(!names(train_num) %in% names(test_num))) stop("  Varibale names in the train and test samples cannot match!")
+    var_names <- names(test_num)
 
     # Target value computation
     if (is.null(targetVal_external)) {
@@ -346,9 +347,9 @@ run_TIGER <- function(test_samples, train_samples,
             if (targetVal_batchWise) {
                 train_X_batch <- train_samples[train_samples[[col_batchID]] == current_batch,]
 
-                train_y_all <- Internal.compute_errorRatio(rawVal     = train_X_batch[[current_var]],
-                                                           sampleType = train_X_batch[[col_sampleType]],
-                                                           targetVal  = targetVal_list[[current_batch]][current_var])
+                train_y_batch <- Internal.compute_errorRatio(rawVal     = train_X_batch[[current_var]],
+                                                             sampleType = train_X_batch[[col_sampleType]],
+                                                             targetVal  = targetVal_list[[current_batch]][current_var])
 
                 trainSet <- cbind(y_target = train_y_batch$targetVal, y_raw = train_y_batch$rawVal,
                                   y = train_y_batch$errorRatio,
