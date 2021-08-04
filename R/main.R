@@ -142,7 +142,7 @@ select_variable <- function(train_num, test_num = NULL,
         batch_names_train <- sort(names(train_num_list))
         batch_names_test  <- sort(names(test_num_list))
         batch_names_len   <- length(batch_names_train)
-        if (!all(batch_names_train == batch_names_test) | batch_names_len != length(batch_names_test)) stop("    Batch names of train and test samples cannot match!")
+        if (any(batch_names_train != batch_names_test) | batch_names_len != length(batch_names_test)) stop("    Batch names of train and test samples cannot match!")
 
         selected_var_list <- lapply(1:batch_names_len, function(batch_name_idx) {
 
@@ -299,13 +299,6 @@ run_TIGER <- function(test_samples, train_samples,
     # train_samples <- do.call("rbind", train_samples_check)
     # test_samples  <- Internal.impute_infinite(test_samples)
 
-    # message("  - Checking variable names...")
-    # var_names <- names(targetVal_list[[1]])
-    #
-    #
-    # if (!all(var_names == names(train_num))) stop("    Varibale names in the train and test samples cannot match!")
-    # if (!all(var_names == names(test_num)))  stop("    Varibale names in the train and test samples cannot match!")
-
     var_selected_list <- select_variable(train_num = train_num, test_num = test_num,
                                          train_batchID = train_samples[[col_batchID]],
                                          test_batchID  = test_samples[[col_batchID]],
@@ -335,19 +328,11 @@ run_TIGER <- function(test_samples, train_samples,
                                                      train_samples, test_samples, col_sampleID, col_sampleType,
                                                      col_batchID, col_order, col_position, batchID, mtry_percent,
                                                      targetVal_method, nodesize_percent, ...) {
-        message("into loop of var")
-        # if (!correlation_batchWise) {
-        #     train_X_selected_var <- train_samples[c(col_sampleID, col_sampleType, col_batchID,
-        #                                             col_order, col_position,
-        #                                             var_selected_list$wholeDataset[[current_var]]) ]
-        #
-        # }
-
+        message("debug: into loop of var")
         if (!targetVal_batchWise) {
-            train_y_all <- Internal.compute_errorRatio(input_samples = train_samples[!names(train_samples) %in% c(col_sampleID, col_batchID, col_order, col_position)],
-                                                       col_sampleType = col_sampleType,
-                                                       targetVal_df = targetVal_list$wholeDataset,
-                                                       current_var = current_var)
+            train_y_all <- Internal.compute_errorRatio(rawVal     = train_samples[[current_var]],
+                                                       sampleType = train_samples[[col_sampleType]],
+                                                       targetVal  = targetVal_list$wholeDataset[current_var])
 
             train_data_all <- cbind(y_target = train_y_all$targetVal, y_raw = train_y_all$rawVal,
                                     y = train_y_all$errorRatio,
@@ -356,22 +341,13 @@ run_TIGER <- function(test_samples, train_samples,
         test_data <- cbind(y_raw = test_samples[[current_var]], test_samples)
 
         res_batch_list <- lapply(batchID, function(current_batch) {
-            message("into loop of batch")
-            # if (correlation_batchWise) {
-            #     train_X_selected_var <- train_samples[c(col_sampleID, col_sampleType, col_batchID,
-            #                                             col_order, col_position,
-            #                                             var_selected_list[[current_batch]][[current_var]]) ]
-            #
-            # }
-
+            message("debug: into loop of batch")
             if (targetVal_batchWise) {
-                # train_X_batch <- train_X_selected_var[train_X_selected_var[[col_batchID]] == current_batch,]
                 train_X_batch <- train_samples[train_samples[[col_batchID]] == current_batch,]
 
-                train_y_batch <- Internal.compute_errorRatio(input_samples = train_X_batch[!names(train_X_batch) %in% c(col_sampleID, col_batchID, col_order, col_position)],
-                                                             col_sampleType = col_sampleType,
-                                                             targetVal_df = targetVal_list[[current_batch]],
-                                                             current_var = current_var)
+                train_y_all <- Internal.compute_errorRatio(rawVal     = train_X_batch[[current_var]],
+                                                           sampleType = train_X_batch[[col_sampleType]],
+                                                           targetVal  = targetVal_list[[current_batch]][current_var])
 
                 trainSet <- cbind(y_target = train_y_batch$targetVal, y_raw = train_y_batch$rawVal,
                                   y = train_y_batch$errorRatio,
@@ -380,11 +356,10 @@ run_TIGER <- function(test_samples, train_samples,
                 trainSet <- train_data_all[train_data_all[[col_batchID]] == current_batch,]
             }
 
-            # trainSet <- train_data[!names(train_data) %in% c(col_sampleID, col_sampleType, col_batchID, current_var)]
             testSet  <- test_data[test_data[[col_batchID]] == current_batch,]
 
-            message("into ensemble")
-            cat("current var:", current_var, "current batch:", current_batch,
+            message("debug: into ensemble")
+            cat("debug: current var:", current_var, "current batch:", current_batch,
                 "selected var:", names(trainSet))
             var_pred <- Internal.run_ensemble(trainSet = trainSet, testSet = testSet,
                                               mtry_percent = seq(0.2, 0.8, 0.2),
@@ -392,16 +367,16 @@ run_TIGER <- function(test_samples, train_samples,
                                               ... = ..., return_base_res = FALSE)
 
             if (targetVal_batchWise) {
-                message("out ensemble, targetVal_batchWise - convert back")
+                message("debug: out ensemble, targetVal_batchWise - convert back")
                 test_targetVal_all   <- do.call(targetVal_method, list(test_data$y_raw, na.rm = TRUE))
                 test_targetVal_batch <- do.call(targetVal_method, list(testSet$y_raw,   na.rm = TRUE))
                 var_pred <- var_pred * test_targetVal_all / test_targetVal_batch
             }
-            message("assign names")
+            message("debug: assign names")
             names(var_pred) <- testSet$original_idx
             var_pred
         })
-        message("out loop of batch")
+        message("debug: out loop of batch")
         res_batch       <- do.call("c", res_batch_list)
         res_batch_order <- res_batch[order(as.numeric(names(res_batch)))]
         res_batch_df    <- data.frame(res_batch_order)

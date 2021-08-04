@@ -205,20 +205,17 @@ Internal.compute_targetVal <- function(input_col, targetVal_method = c("median",
     res
 }
 
-Internal.compute_errorRatio <- function(input_samples, col_sampleType,
-                                        targetVal_df, current_var) {
+Internal.compute_errorRatio <- function(rawVal, sampleType,
+                                        targetVal) {
 
-    out <- sapply(1:nrow(input_samples), function(row_idx, input_samples,
-                                                  col_sampleType, targetVal_df,
-                                                  current_var) {
+    out <- sapply(1:length(rawVal), function(val_idx, rawVal, sampleType, targetVal) {
 
-        targetVal <- targetVal_df[row.names(targetVal_df) == input_samples[[col_sampleType]] [row_idx],] [[current_var]]
-        rawVal <- input_samples[[current_var]][row_idx]
-        errorRatio <- ifelse(targetVal == 0, 0, (rawVal - targetVal) / targetVal)
-        out <- c(errorRatio = errorRatio, targetVal = targetVal, rawVal = rawVal)
+        current_targetVal <- targetVal[row.names(targetVal) == sampleType[val_idx],] [[1]]
+        current_rawVal <- rawVal[val_idx]
+        errorRatio <- ifelse(current_targetVal == 0, 0, (current_rawVal - current_targetVal) / current_targetVal)
+        out <- c(errorRatio = errorRatio, targetVal = current_targetVal, rawVal = current_rawVal)
 
-    }, input_samples = input_samples, col_sampleType = col_sampleType,
-    targetVal_df = targetVal_df, current_var = current_var)
+    }, rawVal = rawVal, sampleType = sampleType, targetVal = targetVal)
 
     out_df <- data.frame(t(out))
 
