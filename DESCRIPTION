@@ -17,7 +17,6 @@ Imports:
     ppcor (>= 1.1),
     randomForest (>= 4.6-14),
     stats (>= 4.0.3)
-DynamicWebsite: https://han-siyu.github.io/TIGER_web
 BugReports: https://github.com/HAN-Siyu/TIGER/issues
 Encoding: UTF-8
 LazyData: true

@@ -43,7 +43,7 @@ The target values can be computed from the whole dataset or from different batch
 
 \code{targetVal_removeOutlier}:
 
-If computing is based on the whole dataset (\code{targetVal_batchWise = TRUE}), users can set \code{targetVal_removeOutlier} as \code{TRUE} to remove the outliers in each metabolite and weaken the impact of extreme values. If \code{targetVal_batchWise = FALSE}, it is generally not recommended to remove outliers, as we assume the data have strong batch effects and contain extreme values—we hope TIGER can take these extreme values into account. Code for checking outliers is adapted from \code{\link[grDevices]{boxplot.stats}}.
+If computing is based on the whole dataset (\code{targetVal_batchWise = TRUE}), users can remove the outliers in each metabolite by setting \code{targetVal_removeOutlier} as \code{TRUE}. This can weaken the impact of extreme values. If \code{targetVal_batchWise = FALSE}, it is generally not recommended to remove outliers, as we assume the data have strong batch effects and contain extreme values—we hope TIGER can take these extreme values into account. Code for checking outliers is adapted from \code{\link[grDevices]{boxplot.stats}}.
 }
 \examples{
 data(data.FF4_qc) # load demo dataset
@@ -51,16 +51,16 @@ QC_num <- data.FF4_qc[-c(1:5)] # only contain numeric metabolite values.
 
 # target values computed on the whole dataset:
 tarVal_1 <- compute_targetVal(QC_num = QC_num,
-                              sampleType = data.FF4_qc$sampleType, # sample type of each sample
-                              batchID = data.FF4_qc$plateID, # plate ID used as batch ID here
+                              sampleType = data.FF4_qc$sampleType,
+                              batchID = data.FF4_qc$plateID,
                               targetVal_method = "mean",
                               targetVal_batchWise = FALSE,
                               targetVal_removeOutlier = TRUE)
 
 # target values computed on batches:
 tarVal_2 <- compute_targetVal(QC_num = QC_num,
-                              sampleType = data.FF4_qc$sampleType, # sample type of each sample
-                              batchID = data.FF4_qc$plateID, # plate ID used as batch ID here
+                              sampleType = data.FF4_qc$sampleType,
+                              batchID = data.FF4_qc$plateID,
                               targetVal_method = "mean",
                               targetVal_batchWise = TRUE,
                               targetVal_removeOutlier = FALSE)
@@ -68,8 +68,8 @@ tarVal_2 <- compute_targetVal(QC_num = QC_num,
 # If coerce_numeric = TRUE,
 # columns cannot be coerced to numeric will be removed (with warnings):
 tarVal_3 <- compute_targetVal(QC_num = data.FF4_qc[-c(4:5)],
-                              sampleType = data.FF4_qc$sampleType, # sample type of each sample
-                              batchID = data.FF4_qc$plateID, # plate ID used as batch ID here
+                              sampleType = data.FF4_qc$sampleType,
+                              batchID = data.FF4_qc$plateID,
                               targetVal_method = "mean",
                               targetVal_batchWise = TRUE,
                               targetVal_removeOutlier = FALSE,
@@ -78,8 +78,8 @@ identical(tarVal_2, tarVal_3)  # The result is identical to tarVal_2.
 
 # will throw errors if input data have non-numeric columns and coerce_numeric = FALSE:
 tarVal_4 <- compute_targetVal(QC_num = data.FF4_qc,
-                              sampleType = data.FF4_qc$sampleType, # sample type of each sample
-                              batchID = data.FF4_qc$plateID, # plate ID used as batch ID here
+                              sampleType = data.FF4_qc$sampleType,
+                              batchID = data.FF4_qc$plateID,
                               targetVal_method = "mean",
                               targetVal_batchWise = TRUE,
                               targetVal_removeOutlier = FALSE,
