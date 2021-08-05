@@ -16,11 +16,12 @@ run_TIGER(
   targetVal_method = c("mean", "median"),
   targetVal_batchWise = FALSE,
   targetVal_removeOutlier = !targetVal_batchWise,
-  correlation_type = c("cor", "pcor"),
-  correlation_method = c("pearson", "spearman"),
-  correlation_batchWise = targetVal_batchWise,
-  min_var_num = 5,
-  max_var_num = 10,
+  selectVar_external = NULL,
+  selectVar_corType = c("cor", "pcor"),
+  selectVar_corMethod = c("pearson", "spearman"),
+  selectVar_batchWise = targetVal_batchWise,
+  selectVar_minNum = 5,
+  selectVar_maxNum = 10,
   mtry_percent = seq(0.2, 0.8, 0.2),
   nodesize_percent = seq(0.2, 0.8, 0.2),
   ...,
@@ -36,15 +37,15 @@ run_TIGER(
 \item batch ID (required): the batch of each sample,
 \item order information (optional): injection order or temporal information of each sample,
 \item position information (optional): well position of each sample)columns of metabolite values,
-\item metabolite values (required).
+\item metabolite values (required): values to be normalised.
 }
-Row: sample. Column: variable. see Examples.}
+Row: sample. Column: variable. See Examples.}
 
 \item{train_samples}{(required) a data.frame containing the training samples (quality control samples). The columns in this data.frame should correspond to the columns in \code{test_samples}. \code{test_samples} and \code{train_samples} should have the identical column names.}
 
 \item{col_sampleID}{(required) a character string indicating the name of the column that specifies the sample ID of each sample. The values in this column will not affect the data correction process but can act as labels for different samples. See Examples.}
 
-\item{col_sampleType}{(required) a character string indicating the name of the column that specifies the type (such as QC1, QC2, subject) of each sample. This column in the \code{train_samples} can be used to indicate different kinds of QC samples. \strong{QC samples of the same type should have the same type name in this column.} See Examples.}
+\item{col_sampleType}{(required) a character string indicating the name of the column that specifies the type (such as QC1, QC2, subject) of each sample. This column in the \code{train_samples} can be used to indicate different kinds of QC samples. \strong{QC samples of the same type should have the same type name.} See Examples.}
 
 \item{col_batchID}{(required) a character string indicating the name of the column that specifies the batch ID of each sample. See Examples.}
 
@@ -58,25 +59,25 @@ Row: sample. Column: variable. see Examples.}
 
 \item{targetVal_batchWise}{logical. If \code{TRUE}, the target values will be computed based on each batch, otherwise, based on the whole dataset. Setting \code{TRUE} might be useful if your dataset has very obvious batch effects, but this may also make the algorithm less robust. Default: \code{FALSE}.}
 
-\item{targetVal_removeOutlier}{logical. If \code{TRUE}, outliers will be removed before the computation. Outliers are determined with the 1.5 * IQR (interquartile range) rule. We recommend turning this off when the target values are computed based on batches. Default: \code{!targetVal_batchWise}.}
+\item{targetVal_removeOutlier}{logical. If \code{TRUE}, outliers will be removed before the computation. Outliers are determined with 1.5 * IQR (interquartile range) rule. We recommend turning this off when the target values are computed based on batches. Default: \code{!targetVal_batchWise}.}
 
-\item{correlation_type}{a character string indicating correlation (\code{"cor"}, default) or partial correlation (\code{"pcor"}) is to be used. Can be abbreviated. Note: computing partial correlations of a large dataset can be very time-consuming.}
+\item{selectVar_corType}{a character string indicating correlation (\code{"cor"}, default) or partial correlation (\code{"pcor"}) is to be used. Can be abbreviated. \strong{Note}: computing partial correlations of a large dataset can be very time-consuming.}
 
-\item{correlation_method}{a character string indicating which correlation coefficient is to be computed. One of \code{"spearman"} (default) or \code{"pearson"}. Can be abbreviated.}
+\item{selectVar_corMethod}{a character string indicating which correlation coefficient is to be computed. One of \code{"spearman"} (default) or \code{"pearson"}. Can be abbreviated.}
 
-\item{correlation_batchWise}{logical. Specify whether the variable selection should be performed for each batch. Setting \code{TRUE} might be useful if your dataset has very obvious batch effects, but this may also make the algorithm less robust. Default: \code{FALSE}.}
+\item{selectVar_batchWise}{logical. Specify whether the variable selection should be performed for each batch. Setting \code{TRUE} might be useful if your dataset has very obvious batch effects, but this may also make the algorithm less robust. Default: \code{FALSE}.}
 
-\item{min_var_num}{an integer specifying the minimum number of the selected variables. If \code{NULL}, no limited, but 1 at least. Default: \code{5}.}
+\item{selectVar_minNum}{an integer specifying the minimum number of the selected variables. If \code{NULL}, no limited, but 1 at least. Default: \code{5}.}
 
-\item{max_var_num}{an integer specifying the maximum number of the selected variables. If \code{NULL}, no limited, but \code{ncol(train_num)} at most. Default: \code{10}.}
+\item{selectVar_maxNum}{an integer specifying the maximum number of the selected variables. If \code{NULL}, no limited, but \code{ncol(train_num)} at most. Default: \code{10}.}
 
-\item{mtry_percent}{(advanced) a numeric vector indicating the percentages of selected variables randomly sampled as candidates at each split when training the random forest models. Default: \code{seq(0.2, 0.8, 0.2)}. Providing more values will train more models, which will increase the processing time.}
+\item{mtry_percent}{(advanced) a numeric vector indicating the percentages of selected variables randomly sampled as candidates at each split when training the random forest models. Providing more values will train more models, which will increase the processing time. Default: \code{seq(0.2, 0.8, 0.2)}.}
 
-\item{nodesize_percent}{(advanced) a numeric vector indicating the percentages of sample size as the minimum sizes of the terminal nodes in random forest models. Default: \code{seq(0.2, 0.8, 0.2)}. Providing more values will train more models, which will increase the processing time.}
+\item{nodesize_percent}{(advanced) a numeric vector indicating the percentages of sample size used as the minimum sizes of the terminal nodes in random forest models. Providing more values will train more models, which will increase the processing time. Default: \code{seq(0.2, 0.8, 0.2)}.}
 
 \item{...}{(advanced) optional arguments (except \code{mtry} and \code{nodesize}) to be passed to \code{\link[randomForest]{randomForest}} for model training. Arguments \code{mtry} and \code{nodesize} are determined by \code{mtry_percent} and \code{nodesize_percent}. Default values are used for other arguments in \code{\link[randomForest]{randomForest}}. Providing more arguments will train more models, which will increase the processing time.}
 
-\item{parallel.cores}{an integer (== -1 or >= 1) specifying the number of cores for parallel computation. Set \code{parallel.cores = -1} to run with all cores. Default: \code{2}.}
+\item{parallel.cores}{an integer (== -1 or >= 1) specifying the number of cores for parallel computation. Setting \code{-1} to run with all cores. Default: \code{2}.}
 }
 \description{
 

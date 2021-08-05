@@ -9,32 +9,32 @@ select_variable(
   test_num = NULL,
   train_batchID = NULL,
   test_batchID = NULL,
-  correlation_batchWise = FALSE,
-  correlation_type = c("cor", "pcor"),
-  correlation_method = c("spearman", "pearson"),
-  min_var_num = 5,
-  max_var_num = 10,
+  selectVar_batchWise = FALSE,
+  selectVar_corType = c("cor", "pcor"),
+  selectVar_corMethod = c("spearman", "pearson"),
+  selectVar_minNum = 5,
+  selectVar_maxNum = 10,
   coerce_numeric = FALSE
 )
 }
 \arguments{
-\item{train_num}{a numeric data.frame including the matabolite values of training samples (can be quality control samples). Row: sample. Column: metabolite variable. see Examples.}
+\item{train_num}{a numeric data.frame including the metabolite values of training samples (can be quality control samples). Row: sample. Column: metabolite variable. See Examples.}
 
-\item{test_num}{a optional numeric data.frame including the matabolite values of test samples (can be subject samples). Row: sample. Column: metabolite variable. see Examples. If \code{NULL}, the variables will be selected based on \code{train_num} only.}
+\item{test_num}{an optional numeric data.frame including the metabolite values of test samples (can be subject samples). Row: sample. Column: metabolite variable. See Examples. If \code{NULL}, the variables will be selected based on \code{train_num} only.}
 
-\item{train_batchID}{ignored if \code{correlation_batchWise = FALSE}. \code{NULL} or a vector corresponding to \code{train_num} to specify the batch of each sample. see Examples.}
+\item{train_batchID}{\code{NULL} or a vector corresponding to \code{train_num} to specify the batch of each sample. Ignored if \code{selectVar_batchWise = FALSE}. See Examples.}
 
-\item{test_batchID}{ignored if \code{correlation_batchWise = FALSE}. \code{NULL} or a vector corresponding to \code{test_num} to specify the batch of each sample. see Examples.}
+\item{test_batchID}{\code{NULL} or a vector corresponding to \code{test_num} to specify the batch of each sample. Ignored if \code{selectVar_batchWise = FALSE}. See Examples.}
 
-\item{correlation_batchWise}{logical. Specify whether the variable selection should be performed for each batch. Setting \code{TRUE} might be useful if your dataset has very obvious batch effects, but this may also make the algorithm less robust. Default: \code{FALSE}.}
+\item{selectVar_batchWise}{logical. Specify whether the variable selection should be performed for each batch. Setting \code{TRUE} might be useful if your dataset has very obvious batch effects, but this may also make the algorithm less robust. Default: \code{FALSE}.}
 
-\item{correlation_type}{a character string indicating correlation (\code{"cor"}, default) or partial correlation (\code{"pcor"}) is to be used. Can be abbreviated. Note: computing partial correlations of a large dataset can be very time-consuming.}
+\item{selectVar_corType}{a character string indicating correlation (\code{"cor"}, default) or partial correlation (\code{"pcor"}) is to be used. Can be abbreviated. \strong{Note}: computing partial correlations of a large dataset can be very time-consuming.}
 
-\item{correlation_method}{a character string indicating which correlation coefficient is to be computed. One of \code{"spearman"} (default) or \code{"pearson"}. Can be abbreviated.}
+\item{selectVar_corMethod}{a character string indicating which correlation coefficient is to be computed. One of \code{"spearman"} (default) or \code{"pearson"}. Can be abbreviated.}
 
-\item{min_var_num}{an integer specifying the minimum number of the selected variables. If \code{NULL}, no limited, but 1 at least. Default: 5.}
+\item{selectVar_minNum}{an integer specifying the minimum number of the selected variables. If \code{NULL}, no limited, but 1 at least. Default: 5.}
 
-\item{max_var_num}{an integer specifying the maximum number of the selected variables. If \code{NULL}, no limited, but \code{ncol(train_num)} at most. Default: 10.}
+\item{selectVar_maxNum}{an integer specifying the maximum number of the selected variables. If \code{NULL}, no limited, but \code{ncol(train_num)} at most. Default: 10.}
 
 \item{coerce_numeric}{logical. If \code{TRUE}, values in \code{train_num} and  \code{test_num} will be coerced to numeric before the computation. Default: \code{FALSE}.}
 }

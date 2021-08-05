@@ -60,10 +60,10 @@ Internal.remove_NA <- function(input_data_num, data_label = NULL,
 # }
 
 Internal.compute_cor <- function(train_num, test_num = NULL,
-                                 correlation_type = c("pcor", "cor"),
-                                 correlation_method = c("spearman", "pearson")) {
+                                 selectVar_corType   = c("pcor", "cor"),
+                                 selectVar_corMethod = c("spearman", "pearson")) {
 
-    if (correlation_type == "pcor") {
+    if (selectVar_corType == "pcor") {
         message("    Checking missing values...")
 
         train_num_noNA <- Internal.remove_NA(train_num, data_label = "training data")
@@ -71,22 +71,22 @@ Internal.compute_cor <- function(train_num, test_num = NULL,
 
         if (ncol(train_num_noNA) > 500) message("    Your data have more than 500 variables. It may take some time to process large datasets.")
 
-        train_cor <- data.frame(ppcor::pcor(train_num_noNA, method = correlation_method)$estimate)
+        train_cor <- data.frame(ppcor::pcor(train_num_noNA, method = selectVar_corMethod)$estimate)
         names(train_cor) <- names(train_num_noNA)
         row.names(train_cor) <- names(train_num_noNA)
 
         if (!is.null(test_num)) {
-            test_cor <- data.frame(ppcor::pcor(test_num_noNA, method = correlation_method)$estimate)
+            test_cor <- data.frame(ppcor::pcor(test_num_noNA, method = selectVar_corMethod)$estimate)
             names(test_cor) <- names(test_num_noNA)
             row.names(test_cor) <- names(test_num_noNA)
         } else test_cor <- NULL
 
     } else {
 
-        train_cor <- data.frame(cor(train_num, method = correlation_method, use = "complete.obs"))
+        train_cor <- data.frame(cor(train_num, method = selectVar_corMethod, use = "complete.obs"))
 
         if (!is.null(test_num)) {
-            test_cor <- data.frame(cor(test_num, method = correlation_method, use = "complete.obs"))
+            test_cor <- data.frame(cor(test_num, method = selectVar_corMethod, use = "complete.obs"))
         } else test_cor <- NULL
     }
 
@@ -94,8 +94,8 @@ Internal.compute_cor <- function(train_num, test_num = NULL,
                      train_cor = train_cor, test_cor = test_cor)
 }
 
-Internal.select_variable <- function(cor_info, min_var_num = NULL,
-                                     max_var_num = NULL) {
+Internal.select_variable <- function(cor_info, selectVar_minNum = NULL,
+                                     selectVar_maxNum = NULL) {
 
     variable_name <- cor_info$variable_name
 
@@ -110,7 +110,7 @@ Internal.select_variable <- function(cor_info, min_var_num = NULL,
     selected_var <- lapply(1:length(variable_name), function(var_idx,
                                                              variable_name,
                                                              train_cor, test_cor,
-                                                             min_var_num, max_var_num) {
+                                                             selectVar_minNum, selectVar_maxNum) {
         pbapply::setTimerProgressBar(pb, var_idx)
 
         input_one_variable_name <- variable_name[[var_idx]]
@@ -132,19 +132,19 @@ Internal.select_variable <- function(cor_info, min_var_num = NULL,
             candidate_var_name   <- intersect(candidate_var_name, candidate_test_name)
         }
 
-        if (length(candidate_var_name) < min_var_num) {
+        if (length(candidate_var_name) < selectVar_minNum) {
 
             if (is.null(test_cor)) {
-                selected_var_name <- correlated_train_name[1:min_var_num]
+                selected_var_name <- correlated_train_name[1:selectVar_minNum]
             } else {
                 current_upper_limit <- min(length(candidate_train_name), length(candidate_test_name))
-                current_upper_limit <- max(current_upper_limit, min_var_num)
+                current_upper_limit <- max(current_upper_limit, selectVar_minNum)
 
                 while (1) {
                     candidate_test_name_tmp  <- correlated_test_name[1:current_upper_limit]
                     candidate_train_name_tmp <- correlated_train_name[1:current_upper_limit]
                     candidate_var_name_tmp <- intersect(candidate_train_name_tmp, candidate_test_name_tmp)
-                    if (length(candidate_var_name_tmp) < min_var_num) {
+                    if (length(candidate_var_name_tmp) < selectVar_minNum) {
                         current_upper_limit <- current_upper_limit + 1
                     } else {
                         selected_var_name <- candidate_var_name_tmp
@@ -153,22 +153,22 @@ Internal.select_variable <- function(cor_info, min_var_num = NULL,
                 }
             }
 
-        } else if (length(candidate_var_name) > max_var_num) {
+        } else if (length(candidate_var_name) > selectVar_maxNum) {
 
             if (is.null(test_cor)) {
-                selected_var_name <- correlated_train_name[1:max_var_num]
+                selected_var_name <- correlated_train_name[1:selectVar_maxNum]
             } else {
-                upper_limit <- max_var_num
+                upper_limit <- selectVar_maxNum
 
                 while (1) {
                     candidate_test_name_tmp  <- correlated_test_name[1:upper_limit]
                     candidate_train_name_tmp <- correlated_train_name[1:upper_limit]
                     candidate_var_name_tmp <- intersect(candidate_train_name_tmp, candidate_test_name_tmp)
 
-                    if (length(candidate_var_name_tmp) < max_var_num) {
+                    if (length(candidate_var_name_tmp) < selectVar_maxNum) {
                         upper_limit <- upper_limit + 1
                         selected_var_name <- candidate_var_name_tmp
-                    } else if (length(candidate_var_name_tmp) == max_var_num) {
+                    } else if (length(candidate_var_name_tmp) == selectVar_maxNum) {
                         selected_var_name <- candidate_var_name_tmp
                         break
                     } else {
@@ -184,7 +184,7 @@ Internal.select_variable <- function(cor_info, min_var_num = NULL,
     },
     variable_name = variable_name,
     train_cor = train_cor, test_cor = test_cor,
-    min_var_num = min_var_num, max_var_num = max_var_num)
+    selectVar_minNum = selectVar_minNum, selectVar_maxNum = selectVar_maxNum)
     pbapply::closepb(pb)
     names(selected_var) <- variable_name
     selected_var

@@ -15,23 +15,75 @@ compute_targetVal(
 )
 }
 \arguments{
-\item{QC_num}{a numeric data.frame including the matabolite values of quality control (QC) samples. Row: sample. Column: metabolite variable. see Examples.}
+\item{QC_num}{a numeric data.frame including the metabolite values of quality control (QC) samples. Row: sample. Column: metabolite variable. See Examples.}
 
-\item{sampleType}{a vector corresponding to \code{QC_num} to specify the type of each sample. see Examples.}
+\item{sampleType}{a vector corresponding to \code{QC_num} to specify the type of each sample. \strong{QC samples of the same type should have the same type name.} See Examples.}
 
-\item{batchID}{a vector corresponding to \code{QC_num} to specify the batch of each sample. see Examples.}
+\item{batchID}{a vector corresponding to \code{QC_num} to specify the batch of each sample. See Examples.}
 
 \item{targetVal_method}{a character string specifying how the target values are computed. Can be \code{"mean"} (default) or \code{"median"}.}
 
 \item{targetVal_batchWise}{logical. If \code{TRUE}, the target values will be computed based on each batch, otherwise, based on the whole dataset. Setting \code{TRUE} might be useful if your dataset has very obvious batch effects, but this may also make the algorithm less robust. Default: \code{FALSE}.}
 
-\item{targetVal_removeOutlier}{logical. If \code{TRUE}, outliers will be removed before the computation. Outliers are determined with the 1.5 * IQR (interquartile range) rule. We recommend turning this off when the target values are computed based on batches. Default: \code{!targetVal_batchWise}.}
+\item{targetVal_removeOutlier}{logical. If \code{TRUE}, outliers will be removed before the computation. Outliers are determined with 1.5 * IQR (interquartile range) rule. We recommend turning this off when the target values are computed based on batches. Default: \code{!targetVal_batchWise}.}
 
-\item{coerce_numeric}{logical. If \code{TRUE}, values in \code{QC_num} will be coerced to numeric before the computation. Default: \code{FALSE}.}
+\item{coerce_numeric}{logical. If \code{TRUE}, values in \code{QC_num} will be coerced to numeric before the computation. The columns cannot be coerced will be removed (with warnings). Default: \code{FALSE}.}
 }
 \description{
-Compute target values for ensemble learning architecture
+This function is used to calculate the target values of one reference dataset (\code{QC_num}, numeric values of quality control samples). The generated target values (a list) can be further passed to the argument \code{targetVal_external} in function \code{\link{run_TIGER}} such that TIGER can align the \code{test_samples} in function \code{\link{run_TIGER}} with the reference dataset. This is useful for longitudinal datasets correction and cross-kit adjustment. See case study section of our original paper for detailed explanation.
 }
 \details{
-Code for checking outliers is adapted from \code{\link[grDevices]{boxplot.stats}}.
+\code{targetVal_method}:
+
+The target values can be the mean or median values of different metabolites. The target values of different kinds of QC samples are computed separately. \code{"mean"} is recommended here, but the optimal selection can differ for different datasets.
+
+\code{targetVal_batchWise}:
+
+The target values can be computed from the whole dataset or from different batches. By default, the target values are computed based on the whole dataset. Computing based on batches (\code{targetVal_batchWise = TRUE}) is only recommended when the samples has very strong batch effects.
+
+\code{targetVal_removeOutlier}:
+
+If computing is based on the whole dataset (\code{targetVal_batchWise = TRUE}), users can set \code{targetVal_removeOutlier} as \code{TRUE} to remove the outliers in each metabolite and weaken the impact of extreme values. If \code{targetVal_batchWise = FALSE}, it is generally not recommended to remove outliers, as we assume the data have strong batch effects and contain extreme values—we hope TIGER can take these extreme values into account. Code for checking outliers is adapted from \code{\link[grDevices]{boxplot.stats}}.
+}
+\examples{
+data(data.FF4_qc) # load demo dataset
+QC_num <- data.FF4_qc[-c(1:5)] # only contain numeric metabolite values.
+
+# target values computed on the whole dataset:
+tarVal_1 <- compute_targetVal(QC_num = QC_num,
+                              sampleType = data.FF4_qc$sampleType, # sample type of each sample
+                              batchID = data.FF4_qc$plateID, # plate ID used as batch ID here
+                              targetVal_method = "mean",
+                              targetVal_batchWise = FALSE,
+                              targetVal_removeOutlier = TRUE)
+
+# target values computed on batches:
+tarVal_2 <- compute_targetVal(QC_num = QC_num,
+                              sampleType = data.FF4_qc$sampleType, # sample type of each sample
+                              batchID = data.FF4_qc$plateID, # plate ID used as batch ID here
+                              targetVal_method = "mean",
+                              targetVal_batchWise = TRUE,
+                              targetVal_removeOutlier = FALSE)
+
+# If coerce_numeric = TRUE,
+# columns cannot be coerced to numeric will be removed (with warnings):
+tarVal_3 <- compute_targetVal(QC_num = data.FF4_qc[-c(4:5)],
+                              sampleType = data.FF4_qc$sampleType, # sample type of each sample
+                              batchID = data.FF4_qc$plateID, # plate ID used as batch ID here
+                              targetVal_method = "mean",
+                              targetVal_batchWise = TRUE,
+                              targetVal_removeOutlier = FALSE,
+                              coerce_numeric = TRUE)
+identical(tarVal_2, tarVal_3)  # The result is identical to tarVal_2.
+
+# will throw errors if input data have non-numeric columns and coerce_numeric = FALSE:
+tarVal_4 <- compute_targetVal(QC_num = data.FF4_qc,
+                              sampleType = data.FF4_qc$sampleType, # sample type of each sample
+                              batchID = data.FF4_qc$plateID, # plate ID used as batch ID here
+                              targetVal_method = "mean",
+                              targetVal_batchWise = TRUE,
+                              targetVal_removeOutlier = FALSE,
+                              coerce_numeric = FALSE)
+
+
 }

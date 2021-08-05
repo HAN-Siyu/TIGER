@@ -13,9 +13,15 @@ compute_RSD(input_data)
 This function compute the RSD (relative standard deviation) of the values in input_data. Missing values are removed before the computation automatically.
 }
 \details{
-The RSD in this function is compuated with the formula:
+The RSD in this function is computed with the formula:
+
 \code{sd(input_data, na.rm = T) / mean(input_data, na.rm = T)}.
 }
 \examples{
-compute_RSD(c(1:10))
+RSD_1 <- compute_RSD(c(1:10))
+
+data(data.FF4_qc) # load demo dataset
+
+RSD_2 <- sapply(data.FF4_qc[data.FF4_qc$sampleType == "QC", -c(1:5)], compute_RSD)
+quantile(RSD_2)
 }
