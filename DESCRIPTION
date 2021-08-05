@@ -2,14 +2,14 @@ Package: TIGER
 Type: Package
 Title: Technical variation elImination with ensemble learninG architEcture in R
 Version: 0.1.0
-Author: c(
-    person(family = "HAN", given = "Siyu", email = "siyu.han@helmholtz-muenchen.de", role = c("aut", "cre"))
-)
+Author: Siyu Han
 Maintainer: Siyu Han <siyu.han@helmholtz-muenchen.de>
-Acknowledgments: TAI Yun Hsiu, WANG Ruoyu, CHENG Ming, GUO Yuan, LI Han, FAN Linrui
-Description: TIGER integrates random forest algorithm into an innovative ensemble learning architecture. Benefiting from this advanced architecture, TIGER is component to capture non-linear variation, resilient to outliers, free from model tuning and less likely to be affected by specific hyperparameters.
+Acknowledgments: TAI Yun-hsiu, WANG Ruoyu, CHENG Ming, GUO Yuan, LI Han, FAN Linrui
+Description: 
+    TIGER integrates random forest algorithm into an innovative ensemble learning architecture. Benefiting from this advanced architecture, TIGER is component to capture non-linear variation, resilient to outliers, free from model tuning and less likely to be affected by specific hyperparameters.
     TIGER supports targeted and untargeted metabolomics data and is competent to perform both intra- and inter-batch technical variation removal. TIGER can also be used for cross-kit adjustment to ensure data obtained from different analytical assays can be effectively combined and compared.
 License: GPL (>= 3)
+Depends: R (>= 3.3.3)
 Imports:
     caret (>= 6.0-71),
     parallel (>= 2.1.0),
@@ -17,7 +17,8 @@ Imports:
     ppcor (>= 1.1),
     randomForest (>= 4.6-14),
     stats (>= 4.0.3)
-DynamicWebsite: https://han-siyu.github.io/TIGER_web/
+DynamicWebsite: https://han-siyu.github.io/TIGER_web
 BugReports: https://github.com/HAN-Siyu/TIGER/issues
 Encoding: UTF-8
 LazyData: true
+RoxygenNote: 7.1.1
