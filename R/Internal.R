@@ -101,8 +101,9 @@ Internal.select_variable <- function(cor_info, selectVar_minNum = NULL,
 
     train_cor <- cor_info$train_cor
     test_cor  <- cor_info$test_cor
+
     train_cor[is.na(train_cor)] <- 0
-    test_cor[is.na(test_cor)] <- 0
+    if (!is.null(test_cor)) test_cor[is.na(test_cor)] <- 0
 
     pb <- pbapply::timerProgressBar(min = 0, max = length(variable_name),
                                     initial = 0, style = 3, width = 70,

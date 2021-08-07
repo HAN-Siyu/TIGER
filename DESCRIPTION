@@ -2,7 +2,6 @@ Package: TIGER
 Type: Package
 Title: Technical variation elImination with ensemble learninG architEcture in R
 Version: 0.1.0
-Author: Siyu Han
 Maintainer: Siyu Han <siyu.han@helmholtz-muenchen.de>
 Acknowledgments: TAI Yun-hsiu, WANG Ruoyu, CHENG Ming, GUO Yuan, LI Han, FAN Linrui
 Description: 

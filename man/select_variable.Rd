@@ -9,35 +9,84 @@ select_variable(
   test_num = NULL,
   train_batchID = NULL,
   test_batchID = NULL,
-  selectVar_batchWise = FALSE,
   selectVar_corType = c("cor", "pcor"),
   selectVar_corMethod = c("spearman", "pearson"),
   selectVar_minNum = 5,
   selectVar_maxNum = 10,
+  selectVar_batchWise = FALSE,
   coerce_numeric = FALSE
 )
 }
 \arguments{
-\item{train_num}{a numeric data.frame including the metabolite values of training samples (can be quality control samples). Row: sample. Column: metabolite variable. See Examples.}
+\item{train_num}{a numeric data.frame \strong{only} including the metabolite values of training samples (can be quality control samples). Information such as injection order or well position need to be excluded. Row: sample. Column: metabolite variable. See Examples.}
 
-\item{test_num}{an optional numeric data.frame including the metabolite values of test samples (can be subject samples). Row: sample. Column: metabolite variable. See Examples. If \code{NULL}, the variables will be selected based on \code{train_num} only.}
+\item{test_num}{an optional numeric data.frame including the metabolite values of test samples (can be subject samples). If provided, the column names of \code{test_num} should correspond to the column names of \code{train_num}. Row: sample. Column: metabolite variable. See Examples. If \code{NULL}, the variables will be selected based on \code{train_num} only.}
 
 \item{train_batchID}{\code{NULL} or a vector corresponding to \code{train_num} to specify the batch of each sample. Ignored if \code{selectVar_batchWise = FALSE}. See Examples.}
 
 \item{test_batchID}{\code{NULL} or a vector corresponding to \code{test_num} to specify the batch of each sample. Ignored if \code{selectVar_batchWise = FALSE}. See Examples.}
 
-\item{selectVar_batchWise}{logical. Specify whether the variable selection should be performed for each batch. Setting \code{TRUE} might be useful if your dataset has very obvious batch effects, but this may also make the algorithm less robust. Default: \code{FALSE}.}
+\item{selectVar_corType}{a character string indicating correlation (\code{"cor"}, default) or partial correlation (\code{"pcor"}) is to be used. Can be abbreviated. See Details. \strong{Note}: computing partial correlations of a large dataset can be very time-consuming.}
 
-\item{selectVar_corType}{a character string indicating correlation (\code{"cor"}, default) or partial correlation (\code{"pcor"}) is to be used. Can be abbreviated. \strong{Note}: computing partial correlations of a large dataset can be very time-consuming.}
+\item{selectVar_corMethod}{a character string indicating which correlation coefficient is to be computed. One of \code{"spearman"} (default) or \code{"pearson"}. Can be abbreviated. See Details.}
 
-\item{selectVar_corMethod}{a character string indicating which correlation coefficient is to be computed. One of \code{"spearman"} (default) or \code{"pearson"}. Can be abbreviated.}
+\item{selectVar_minNum}{an integer specifying the minimum number of the selected variables. If \code{NULL}, no limited, but 1 at least. See Details. Default: 5.}
 
-\item{selectVar_minNum}{an integer specifying the minimum number of the selected variables. If \code{NULL}, no limited, but 1 at least. Default: 5.}
+\item{selectVar_maxNum}{an integer specifying the maximum number of the selected variables. If \code{NULL}, no limited, but \code{ncol(train_num)} at most. See Details. Default: 10.}
 
-\item{selectVar_maxNum}{an integer specifying the maximum number of the selected variables. If \code{NULL}, no limited, but \code{ncol(train_num)} at most. Default: 10.}
+\item{selectVar_batchWise}{(advanced) logical. Specify whether the variable selection should be performed based on each batch. The support of batch-wise variable selection is provided for a customisable algorithm setting for the data requiring special processing. But in most case, batch-wise variable selection is not recommended. Setting \code{TRUE} can make the algorithm less robust. See Details. Default: \code{FALSE}.}
 
-\item{coerce_numeric}{logical. If \code{TRUE}, values in \code{train_num} and  \code{test_num} will be coerced to numeric before the computation. Default: \code{FALSE}.}
+\item{coerce_numeric}{logical. If \code{TRUE}, values in \code{train_num} and  \code{test_num} will be coerced to numeric before the computation. The columns cannot be coerced will be removed (with warnings). See Examples. Default: \code{FALSE}.}
 }
 \description{
-Select variables for ensemble learning architecture
+This function provides an advanced option to select metabolite variables from external dataset(s). The selected variables (as a list) can be further passed to the argument \code{selectVar_external} in function \code{\link{run_TIGER}} for a customised data correction.
+}
+\details{
+See \code{\link{run_TIGER}}.
+}
+\examples{
+
+data(data.FF4_qc) # load demo dataset
+
+# QC as training samples; QC1, QC2 and QC3 as test samples:
+train_samples <- data.FF4_qc[data.FF4_qc$sampleType == "QC",]
+test_samples  <- data.FF4_qc[data.FF4_qc$sampleType != "QC",]
+
+# Only numeric data of metabolite variables are allowed:
+train_num = train_samples[-c(1:5)]
+test_num  = test_samples[-c(1:5)]
+
+# If the selection is performed on the whole dataset:
+# based on training samples only:
+selected_var_1 <- select_variable(train_num = train_num,
+                                  test_num  = NULL,
+                                  selectVar_batchWise = FALSE)
+
+# also consider test samples:
+selected_var_2 <- select_variable(train_num = train_num,
+                                  test_num  = test_num,
+                                  selectVar_batchWise = FALSE)
+
+# If the selection is based on different batches:
+# (In this case, batch ID is required.)
+selected_var_3 <- select_variable(train_num = train_num,
+                                  test_num  = NULL,
+                                  train_batchID = train_samples$plateID,
+                                  test_batchID  = NULL,
+                                  selectVar_batchWise = TRUE)
+
+# If coerce_numeric = TRUE,
+# columns cannot be coerced to numeric will be removed (with warnings):
+(In this example, columns of injection order and well position are excluded.)
+selected_var_4 <- select_variable(train_num = train_samples[-c(4,5)],
+                                  train_batchID = train_samples$plateID,
+                                  selectVar_batchWise = TRUE,
+                                  coerce_numeric = TRUE)
+identical(selected_var_3, selected_var_4)  # identical to selected_var_3
+
+# will throw errors if input data have non-numeric columns
+# and coerce_numeric = FALSE:
+selected_var_5 <- select_variable(train_num = train_samples[-c(4,5)],
+                                  coerce_numeric = FALSE)
+
 }

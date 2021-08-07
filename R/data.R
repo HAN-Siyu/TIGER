@@ -8,7 +8,7 @@
 #' \item QC  (\emph{N} = 145, five per plate).
 #' }
 #'
-#' The columns include sample ID, sample type, plate ID, well position, injection order and the concentrations of 103 selected targeted metabolites. These QC samples are measured with the cohort samples of KORA FF4 (Cooperative Health Research in the Augsburg Region, the second follow-up study, 2013–2014) using the analytical assay Biocrates Absolute\emph{IDQ} p180 (BIOCRATES Life Sciences AG, Innsbruck, Austria). The cohort data are operated by Helmholtz Zentrum München and available via KORA platform \url{https://www.helmholtz-muenchen.de/en/kora/index.html} upon reasonable request. See Reference for detailed information.
+#' The columns include sample ID, sample type, plate ID, well position, injection order and the concentrations of 103 selected targeted metabolites. These QC samples are measured with the cohort samples of KORA FF4 (Cooperative Health Research in the Augsburg Region, the second follow-up study, 2013–2014) using the analytical assay Biocrates Absolute\emph{IDQ}\ifelse{html}{\out{<sup>®</sup>}}{®} p180 (BIOCRATES Life Sciences AG, Innsbruck, Austria). When evaluating TIGER and other competing methods in our study, we used QC as training samples, and QC1, QC2, QC3 and cohort samples as test samples. The cohort data are operated by Helmholtz Zentrum München and available via KORA platform \url{https://www.helmholtz-muenchen.de/en/kora/index.html} upon reasonable request. See Reference for detailed information.
 #'
 #' @name data.FF4_qc
 #' @usage data(data.FF4_qc)
