@@ -77,5 +77,4 @@ tarVal_4 <- compute_targetVal(QC_num = FF4_qc,
                               targetVal_removeOutlier = FALSE,
                               coerce_numeric = FALSE)
 }
-
 }

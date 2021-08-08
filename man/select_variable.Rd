@@ -32,7 +32,7 @@ select_variable(
 
 \item{selectVar_minNum}{an integer specifying the minimum number of the selected variables. If \code{NULL}, no limited, but 1 at least. See Details. Default: 5.}
 
-\item{selectVar_maxNum}{an integer specifying the maximum number of the selected variables. If \code{NULL}, no limited, but \code{ncol(train_num)} at most. See Details. Default: 10.}
+\item{selectVar_maxNum}{an integer specifying the maximum number of the selected variables. If \code{NULL}, no limited, but \code{ncol(train_num) - 1} at most. See Details. Default: 10.}
 
 \item{selectVar_batchWise}{(advanced) logical. Specify whether the variable selection should be performed based on each batch. Default: \code{FALSE}. \strong{Note}: if \code{TRUE}, batch ID of each sample are required. The support of batch-wise variable selection is provided for a customisable algorithm setting for the data requiring special processing. But in most case, batch-wise variable selection is not recommended. Setting \code{TRUE} can make the algorithm less robust. See Details.}
 
@@ -92,5 +92,4 @@ identical(selected_var_3, selected_var_4)  # identical to selected_var_3
 selected_var_5 <- select_variable(train_num = train_samples[-c(4,5)],
                                   coerce_numeric = FALSE)
 }
-
 }

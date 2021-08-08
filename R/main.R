@@ -17,7 +17,6 @@
 #'
 #' RSD_2 <- sapply(FF4_qc[FF4_qc$sampleType == "QC", -c(1:5)], compute_RSD)
 #' quantile(RSD_2)
-
 #' @export
 
 compute_RSD <- function(input_data) {
@@ -85,7 +84,6 @@ compute_RSD <- function(input_data) {
 #'                               targetVal_removeOutlier = FALSE,
 #'                               coerce_numeric = FALSE)
 #' }
-#'
 #' @export
 
 compute_targetVal <- function(QC_num, sampleType, batchID,
@@ -150,7 +148,7 @@ compute_targetVal <- function(QC_num, sampleType, batchID,
 #' @param selectVar_corType a character string indicating correlation (\code{"cor"}, default) or partial correlation (\code{"pcor"}) is to be used. Can be abbreviated. See Details. \strong{Note}: computing partial correlations of a large dataset can be very time-consuming.
 #' @param selectVar_corMethod a character string indicating which correlation coefficient is to be computed. One of \code{"spearman"} (default) or \code{"pearson"}. Can be abbreviated. See Details.
 #' @param selectVar_minNum an integer specifying the minimum number of the selected variables. If \code{NULL}, no limited, but 1 at least. See Details. Default: 5.
-#' @param selectVar_maxNum an integer specifying the maximum number of the selected variables. If \code{NULL}, no limited, but \code{ncol(train_num)} at most. See Details. Default: 10.
+#' @param selectVar_maxNum an integer specifying the maximum number of the selected variables. If \code{NULL}, no limited, but \code{ncol(train_num) - 1} at most. See Details. Default: 10.
 #' @param selectVar_batchWise (advanced) logical. Specify whether the variable selection should be performed based on each batch. Default: \code{FALSE}. \strong{Note}: if \code{TRUE}, batch ID of each sample are required. The support of batch-wise variable selection is provided for a customisable algorithm setting for the data requiring special processing. But in most case, batch-wise variable selection is not recommended. Setting \code{TRUE} can make the algorithm less robust. See Details.
 #' @param coerce_numeric logical. If \code{TRUE}, values in \code{train_num} and  \code{test_num} will be coerced to numeric before the computation. The columns cannot be coerced will be removed (with warnings). See Examples. Default: \code{FALSE}.
 #'
@@ -210,7 +208,6 @@ compute_targetVal <- function(QC_num, sampleType, batchID,
 #' selected_var_5 <- select_variable(train_num = train_samples[-c(4,5)],
 #'                                   coerce_numeric = FALSE)
 #' }
-#'
 #' @export
 
 select_variable <- function(train_num, test_num = NULL,
@@ -227,13 +224,10 @@ select_variable <- function(train_num, test_num = NULL,
     selectVar_corMethod <- match.arg(selectVar_corMethod)
 
     selectVar_minNum <- ifelse(is.null(selectVar_minNum), 1, selectVar_minNum)
-    selectVar_maxNum <- ifelse(is.null(selectVar_maxNum), ncol(train_num), selectVar_maxNum)
+    selectVar_maxNum <- ifelse(is.null(selectVar_maxNum), (ncol(train_num) - 1), selectVar_maxNum)
 
-    selectVar_minNum <- as.integer(selectVar_minNum)
-    selectVar_maxNum <- as.integer(selectVar_maxNum)
-
-    if (selectVar_minNum < 1) stop("  selectVar_minNum must be a positive integer!")
-    if (selectVar_maxNum > ncol(train_num)) stop("  selectVar_maxNum cannot be greater than variable number!")
+    selectVar_minNum <- max(as.integer(selectVar_minNum), 1)
+    selectVar_maxNum <- min(as.integer(selectVar_maxNum), ncol(train_num) - 1)
 
     if(coerce_numeric) {
         train_num <- as.data.frame(sapply(train_num, as.numeric))
@@ -366,41 +360,55 @@ select_variable <- function(train_num, test_num = NULL,
 #' @importFrom stats sd
 #'
 #' @details
-#' TIGER can effectively process the datasets with its default setup. The following hyperparameters are provided to customise the algorithm and achieve better performance for some special purposes (such as cross-kit adjustment, longitudinal dataset correction) or the datasets requiring special processing (for example, data with very strong temporal drifts or batch effects). To ensure a reliable result, we recommend users to examine the normalised result with different metrics, such as RSD (relative standard deviation), MAPE (mean absolute percentage error) and PCA (principal component analysis).
+#' TIGER can effectively process the datasets with its default setup. The following hyperparameters are provided to customise the algorithm and achieve better performance for some special purposes (such as cross-kit adjustment, longitudinal dataset correction) or the datasets requiring special processing (for example, data with very strong temporal drifts or batch effects). We recommend users to examine the normalised result with different metrics, such as RSD (relative standard deviation), MAPE (mean absolute percentage error) and PCA (principal component analysis), especially when tuning advanced options of TIGER.
 #'
 #' \strong{Hyperparameters for target value computation}
 #'
-#' \code{targetVal_external}:
+#' \itemize{
+#' \item \code{targetVal_external}
 #'
 #' TIGER by default captures and eliminate the technical variation within the input dataset, and the target values are automatically computed from \code{train_samples}. The target values can also be calculated from a reference dataset using function \code{\link{compute_targetVal}} and then passed to this function as an argument. This will enable TIGER to align \code{test_samples} with the reference dataset. In this case, \code{train_samples} is still the accompanying quality control (QC) samples of \code{test_samples}. And argument \code{targetVal_external} accepts external target values (a list). If the list of external target values is provided, values in \code{targetVal_method}, \code{targetVal_batchWise} and \code{targetVal_removeOutlier} will be ignored.
 #'
-#' \code{targetVal_method}:
+#' \item \code{targetVal_method}
 #'
 #' The target values can be the mean or median values of different metabolites. The target values of different kinds of QC samples are computed separately. \code{"mean"} is recommended here, but the optimal selection can differ for different datasets.
 #'
-#' \code{targetVal_batchWise}:
+#' \item \code{targetVal_batchWise}
 #'
 #' The target values can be computed from the whole dataset or from different batches. By default, the target values are computed based on the whole dataset. Computing based on batches (\code{targetVal_batchWise = TRUE}) is only recommended when the samples has very strong batch effects. For example, we set this as \code{TRUE} when normalising WaveICA's Amide dataset in our original paper.
 #'
-#' \code{targetVal_removeOutlier}:
+#' \item  \code{targetVal_removeOutlier}
 #'
 #' If computing is based on the whole dataset (\code{targetVal_batchWise = TRUE}), users can remove the outliers in each metabolite by setting \code{targetVal_removeOutlier} as \code{TRUE}. This can weaken the impact of extreme values. If \code{targetVal_batchWise = FALSE}, it is generally not recommended to remove outliers, as we assume the data have strong batch effects and contain extreme values—we hope TIGER can take these extreme values into account. Code for checking outliers is adapted from \code{\link[grDevices]{boxplot.stats}}.
+#' }
 #'
 #' \strong{Hyperparameters for variable selection}
 #'
-#' \code{selectVar_external}:
+#' \itemize{
+#' \item \code{selectVar_external}:
 #'
-#' \code{selectVar_corType} and \code{selectVar_corMethod}:
+#' This argument accepts a list of selected variables generated by \code{\link{select_variable}}. This is helpful when you want to use the same selected variables to correct several datasets. You can also pass a self-defined list to this argument, as long as the self-defined list has similar data structure as the one generated by \code{\link{select_variable}}.
 #'
-#' \code{selectVar_minNum} and \code{selectVar_maxNum}:
+#' \item \code{selectVar_corType} and \code{selectVar_corMethod}:
 #'
-#' \code{selectVar_batchWise}:
+#' TIGER supports Pearson product-moment correlation (\code{"pearson"}) and Spearman's rank correlation (\code{"spearman"}) to compute correlation coefficients (\code{"cor"}) or partial correlation coefficients (\code{"por"}) for variable selection. See \code{\link[stats]{cor}} and \code{\link[ppcor]{pcor}} for further details.
+#'
+#' \item \code{selectVar_minNum} and \code{selectVar_maxNum}:
+#'
+#' For an objective metabolite to be corrected, the intersection of its top \emph{t} highly-correlated metabolites calculated from training and test samples are selected to train the ensemble model. The highly-correlated metabolites are the ones with correlation coefficients greater than 0.5 (the objective metabolite itself will not be regarded as its highly-correlated metabolite to train models). Arguments \code{selectVar_minNum} and \code{selectVar_maxNum} are used to avoid selecting too many or too few metabolites. Selecting too many metabolites can lower the process, sometimes even lower the accuracy.
+#'
+#' \item \code{selectVar_batchWise}:
+#'
+#' Advanced option designed for special cases. Setting it \code{TRUE} might be useful when your data have strong batch effects.
+#' }
 #'
 #' \strong{Hyperparameters for model construction}
 #'
-#' \code{mtry_percent}, \code{nodesize_percent} and \code{...}:
+#' \itemize{
+#' \item \code{mtry_percent}, \code{nodesize_percent} and \code{...}:
 #'
 #' Advanced options to specify \code{mtry}, \code{nodesize} and other related arguments in \code{\link[randomForest]{randomForest}} for a customised ensemble learning architecture. See Examples.
+#' }
 #'
 #' @section References:
 #' Han S. \emph{et al}. TIGER: technical variation elimination for metabolomics data using ensemble learning architecture. (\emph{Submitted})
@@ -502,7 +510,6 @@ select_variable <- function(train_num, test_num = NULL,
 #' #       Thus, the total number of hyperparameter combinations can be less than 24.
 #' #       This is determined by the shape of your input datasets.
 #' }
-#'
 #' @export
 #'
 run_TIGER <- function(test_samples, train_samples,
