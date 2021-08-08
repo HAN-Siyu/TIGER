@@ -25,8 +25,7 @@ run_TIGER(
   mtry_percent = seq(0.2, 0.8, 0.2),
   nodesize_percent = seq(0.2, 0.8, 0.2),
   ...,
-  parallel.cores = 2,
-  logName = NA
+  parallel.cores = 2
 )
 }
 \arguments{

@@ -88,7 +88,9 @@ identical(selected_var_3, selected_var_4)  # identical to selected_var_3
 
 # will throw errors if input data have non-numeric columns
 # and coerce_numeric = FALSE:
+\dontrun{
 selected_var_5 <- select_variable(train_num = train_samples[-c(4,5)],
                                   coerce_numeric = FALSE)
+}
 
 }

@@ -4,6 +4,8 @@
 #'
 #' @param input_data a numeric vector
 #'
+#' @importFrom stats sd
+#'
 #' @details The RSD in this function is computed with the formula:
 #'
 #' \code{sd(input_data, na.rm = T) / mean(input_data, na.rm = T)}.
@@ -36,6 +38,8 @@ compute_RSD <- function(input_data) {
 #' @param coerce_numeric logical. If \code{TRUE}, values in \code{QC_num} will be coerced to numeric before the computation. The columns cannot be coerced will be removed (with warnings). See Examples. Default: \code{FALSE}.
 #'
 #' @importFrom stats fivenum
+#' @importFrom stats aggregate
+#' @importFrom stats median
 #'
 #' @details See \code{\link{run_TIGER}}.
 #'
@@ -72,6 +76,7 @@ compute_RSD <- function(input_data) {
 #'
 #' # will throw errors if input data have non-numeric columns
 #' # and coerce_numeric = FALSE:
+#' \dontrun{
 #' tarVal_4 <- compute_targetVal(QC_num = FF4_qc,
 #'                               sampleType = FF4_qc$sampleType,
 #'                               batchID = FF4_qc$plateID,
@@ -79,7 +84,7 @@ compute_RSD <- function(input_data) {
 #'                               targetVal_batchWise = TRUE,
 #'                               targetVal_removeOutlier = FALSE,
 #'                               coerce_numeric = FALSE)
-#'
+#' }
 #'
 #' @export
 
@@ -153,6 +158,7 @@ compute_targetVal <- function(QC_num, sampleType, batchID,
 #' @importFrom pbapply setTimerProgressBar
 #' @importFrom pbapply closepb
 #' @importFrom ppcor pcor
+#' @importFrom stats cor
 #'
 #' @details See \code{\link{run_TIGER}}.
 #'
@@ -200,8 +206,10 @@ compute_targetVal <- function(QC_num, sampleType, batchID,
 #'
 #' # will throw errors if input data have non-numeric columns
 #' # and coerce_numeric = FALSE:
+#' \dontrun{
 #' selected_var_5 <- select_variable(train_num = train_samples[-c(4,5)],
 #'                                   coerce_numeric = FALSE)
+#' }
 #'
 #' @export
 
@@ -348,7 +356,14 @@ select_variable <- function(train_num, test_num = NULL,
 #' @importFrom pbapply closepb
 #' @importFrom ppcor pcor
 #' @importFrom randomForest randomForest
+#' @importFrom stats aggregate
+#' @importFrom stats as.formula
+#' @importFrom stats cor
 #' @importFrom stats fivenum
+#' @importFrom stats median
+#' @importFrom stats predict
+#' @importFrom stats rnorm
+#' @importFrom stats sd
 #'
 #' @details
 #' TIGER can effectively process the datasets with its default setup. The following hyperparameters are provided to customise the algorithm and achieve better performance for some special purposes (such as cross-kit adjustment, longitudinal dataset correction) or the datasets requiring special processing (for example, data with very strong temporal drifts or batch effects). To ensure a reliable result, we recommend users to examine the normalised result with different metrics, such as RSD (relative standard deviation), MAPE (mean absolute percentage error) and PCA (principal component analysis).

@@ -68,6 +68,7 @@ identical(tarVal_2, tarVal_3)  # identical to tarVal_2
 
 # will throw errors if input data have non-numeric columns
 # and coerce_numeric = FALSE:
+\dontrun{
 tarVal_4 <- compute_targetVal(QC_num = FF4_qc,
                               sampleType = FF4_qc$sampleType,
                               batchID = FF4_qc$plateID,
@@ -75,6 +76,6 @@ tarVal_4 <- compute_targetVal(QC_num = FF4_qc,
                               targetVal_batchWise = TRUE,
                               targetVal_removeOutlier = FALSE,
                               coerce_numeric = FALSE)
-
+}
 
 }
