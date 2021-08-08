@@ -71,13 +71,13 @@ Row: sample. Column: variable. See Examples.}
 
 \item{selectVar_maxNum}{an integer specifying the maximum number of the selected metabolite variables(injection order and well position are not regarded as metabolite variables). If \code{NULL}, no limited, but no more than the number of all available metabolite variables. Default: \code{10}. Ignored if a list of selected variables has been assigned to \code{selectVar_external}.}
 
-\item{selectVar_batchWise}{(advanced) logical. Specify whether the variable selection should be performed based on each batch. The support of batch-wise variable selection is provided for a customisable algorithm setting for the data requiring special processing But in most case, batch-wise variable selection is not recommended. Setting \code{TRUE} can make the algorithm less robust. Default: \code{FALSE}. Ignored if a list of selected variables has been assigned to \code{selectVar_external}.}
+\item{selectVar_batchWise}{(advanced) logical. Specify whether the variable selection should be performed based on each batch. Default: \code{FALSE}. Ignored if a list of selected variables has been assigned to \code{selectVar_external}. \strong{Note}: the support of batch-wise variable selection is provided for a customisable algorithm setting for the data requiring special processing. But in most case, batch-wise variable selection is not recommended. Setting \code{TRUE} can make the algorithm less robust.}
 
-\item{mtry_percent}{(advanced) a numeric vector indicating the percentages of selected variables randomly sampled as candidates at each split when training the random forest models. Providing more values will train more models, which will increase the processing time. Default: \code{seq(0.2, 0.8, 0.2)}.}
+\item{mtry_percent}{(advanced) a numeric vector indicating the percentages of selected variables randomly sampled as candidates at each split when training the random forest models. \strong{Note}: providing more arguments will include more base learners into the ensemble model, which will increase the processing time. Default: \code{seq(0.2, 0.8, 0.2)}.}
 
-\item{nodesize_percent}{(advanced) a numeric vector indicating the percentages of sample size used as the minimum sizes of the terminal nodes in random forest models. Providing more values will train more models, which will increase the processing time. Default: \code{seq(0.2, 0.8, 0.2)}.}
+\item{nodesize_percent}{(advanced) a numeric vector indicating the percentages of sample size used as the minimum sizes of the terminal nodes in random forest models. \strong{Note}: providing more arguments will include more base learners into the ensemble model, which will increase the processing time. Default: \code{seq(0.2, 0.8, 0.2)}.}
 
-\item{...}{(advanced) optional arguments (except \code{mtry} and \code{nodesize}) to be passed to \code{\link[randomForest]{randomForest}} for model training. Arguments \code{mtry} and \code{nodesize} are determined by \code{mtry_percent} and \code{nodesize_percent}. Default values are used for other arguments in \code{\link[randomForest]{randomForest}}. Providing more arguments will train more models, which will increase the processing time.}
+\item{...}{(advanced) optional arguments (except \code{mtry} and \code{nodesize}) to be passed to \code{\link[randomForest]{randomForest}} for model training. Arguments \code{mtry} and \code{nodesize} are determined by \code{mtry_percent} and \code{nodesize_percent}. Default values are used for other arguments in \code{\link[randomForest]{randomForest}}. See Examples. \strong{Note}: providing more arguments will include more base learners into the ensemble model, which will increase the processing time.}
 
 \item{parallel.cores}{an integer (== -1 or >= 1) specifying the number of cores for parallel computation. Setting \code{-1} to run with all cores. Default: \code{2}.}
 }
@@ -119,7 +119,7 @@ If computing is based on the whole dataset (\code{targetVal_batchWise = TRUE}), 
 
 \code{mtry_percent}, \code{nodesize_percent} and \code{...}:
 
-Advanced options to specify \code{mtry}, \code{nodesize} and other related arguments in \code{\link[randomForest]{randomForest}} for a customised ensemble learning architecture.
+Advanced options to specify \code{mtry}, \code{nodesize} and other related arguments in \code{\link[randomForest]{randomForest}} for a customised ensemble learning architecture. See Examples.
 }
 \section{References}{
 
@@ -129,6 +129,7 @@ Han S. \emph{et al}. TIGER: technical variation elimination for metabolomics dat
 \examples{
 
 \dontrun{
+
 data(FF4_qc) # load demo dataset
 
 # QC as training samples; QC1, QC2 and QC3 as test samples:
@@ -152,9 +153,9 @@ test_norm_1 <- run_TIGER(test_samples = test_samples,
 
 # If the information of injection order and well position is not available,
 # or you don't want to use them:
-
 train_data <- train_samples[-c(4:5)]  # remove the two columns
 test_data  <- test_samples[-c(4:5)]   # remove the two columns
+
 test_norm_2 <- run_TIGER(test_samples = test_data,
                          train_samples = train_data,
                          col_sampleID  = "sampleID",
@@ -166,7 +167,6 @@ test_norm_2 <- run_TIGER(test_samples = test_data,
 
 # If use external target values and selected variables with
 # customised settings:
-
 target_val <- compute_targetVal(QC_num = train_samples[-c(1:5)],
                                 sampleType = train_samples$sampleType,
                                 batchID = train_samples$plateID,
@@ -194,15 +194,34 @@ test_norm_3 <- run_TIGER(test_samples = test_samples,
                          selectVar_external = select_var,
                          parallel.cores = -1)
 
-# If include more hyperparameters into model training:
-test_norm_2 <- run_TIGER(test_samples = test_data,
+# The definitions of other hyperparameters correspond to
+# randomForest::randomForest().
+# If want to include more hyperparameters into model training,
+# put hyperparameter values like this:
+mtry_percent <- c(0.4, 0.8)
+nodesize_percent <- c(0.4, 0.8)
+replace <- c(TRUE, FALSE)
+ntree <- c(100, 200, 300)
+
+test_norm_4 <- run_TIGER(test_samples = test_data,
                          train_samples = train_data,
                          col_sampleID  = "sampleID",
                          col_sampleType = "sampleType",
                          col_batchID = "plateID",
-                         col_order = NULL,                # set NULL
-                         col_position = NULL,             # set NULL
-                         parallel.cores = -1)
+                         mtry_percent = mtry_percent,
+                         nodesize_percent = nodesize_percent,
+                         replace = replace,
+                         ntree = ntree,
+                         parallel.cores = 2)
+
+# test_norm_4 is corrected by the ensemble model consisted of base learners
+# trained with (around) 24 different hyperparameter combinations:
+expand.grid(mtry_percent, nodesize_percent, replace, ntree)
+
+# Note: mtry and nodesize are calculated by mtry_percent and nodesize_percent,
+#       duplicated hyperparameter combinations, if any, will be removed.
+#       Thus, the total number of hyperparameter combinations can be less than 24.
+#       This is determined by the shape of your input datasets.
 }
 
 }

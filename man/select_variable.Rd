@@ -34,7 +34,7 @@ select_variable(
 
 \item{selectVar_maxNum}{an integer specifying the maximum number of the selected variables. If \code{NULL}, no limited, but \code{ncol(train_num)} at most. See Details. Default: 10.}
 
-\item{selectVar_batchWise}{(advanced) logical. Specify whether the variable selection should be performed based on each batch. The support of batch-wise variable selection is provided for a customisable algorithm setting for the data requiring special processing. But in most case, batch-wise variable selection is not recommended. Setting \code{TRUE} can make the algorithm less robust. See Details. Default: \code{FALSE}.}
+\item{selectVar_batchWise}{(advanced) logical. Specify whether the variable selection should be performed based on each batch. Default: \code{FALSE}. \strong{Note}: if \code{TRUE}, batch ID of each sample are required. The support of batch-wise variable selection is provided for a customisable algorithm setting for the data requiring special processing. But in most case, batch-wise variable selection is not recommended. Setting \code{TRUE} can make the algorithm less robust. See Details.}
 
 \item{coerce_numeric}{logical. If \code{TRUE}, values in \code{train_num} and  \code{test_num} will be coerced to numeric before the computation. The columns cannot be coerced will be removed (with warnings). See Examples. Default: \code{FALSE}.}
 }
@@ -68,7 +68,7 @@ selected_var_2 <- select_variable(train_num = train_num,
                                   selectVar_batchWise = FALSE)
 
 # If the selection is based on different batches:
-# (In this case, batch ID is required.)
+# (In selectVar_batchWise, batch ID is required.)
 selected_var_3 <- select_variable(train_num = train_num,
                                   test_num  = NULL,
                                   train_batchID = train_samples$plateID,
@@ -77,7 +77,9 @@ selected_var_3 <- select_variable(train_num = train_num,
 
 # If coerce_numeric = TRUE,
 # columns cannot be coerced to numeric will be removed (with warnings):
-(In this example, columns of injection order and well position are excluded.)
+# (In this example, columns of injection order and well position are excluded.
+# Because we don't want to calculate the correlations between metabolites and
+# injection order/well position.)
 selected_var_4 <- select_variable(train_num = train_samples[-c(4,5)],
                                   train_batchID = train_samples$plateID,
                                   selectVar_batchWise = TRUE,
