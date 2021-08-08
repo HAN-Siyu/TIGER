@@ -64,12 +64,10 @@ Internal.compute_cor <- function(train_num, test_num = NULL,
                                  selectVar_corMethod = c("spearman", "pearson")) {
 
     if (selectVar_corType == "pcor") {
-        message("    Checking missing values...")
-
         train_num_noNA <- Internal.remove_NA(train_num, data_label = "training data")
         if (!is.null(test_num)) test_num_noNA <- Internal.remove_NA(test_num, data_label = "test data")
 
-        if (ncol(train_num_noNA) > 500) message("    Your data have more than 500 variables. It may take some time to process large datasets.")
+        if (ncol(train_num_noNA) > 500) message("      Your data have more than 500 variables. It may take some time to process large datasets.")
 
         train_cor <- data.frame(ppcor::pcor(train_num_noNA, method = selectVar_corMethod)$estimate)
         names(train_cor) <- names(train_num_noNA)
@@ -271,7 +269,12 @@ Internal.run_ensemble <- function(trainSet, testSet,
         pred_test   <- predict(RF_base_mod, testSet)
         pred_test_convert <- testSet$y_raw / (pred_test + 1)
 
-        out <- list(mod_weight = mod_weight, pred_test_convert = pred_test_convert)
+        if (return_base_res) {
+            out <- list(mod_weight = mod_weight, pred_test_convert = pred_test_convert, RF_base_mod = RF_base_mod)
+        } else {
+            out <- list(mod_weight = mod_weight, pred_test_convert = pred_test_convert)
+        }
+        out
     })
     mod_weights <- sapply(pred_ensemble, function(x) x$mod_weight)
     mod_weights_norm <- mod_weights / sum(mod_weights, na.rm = TRUE)
@@ -280,14 +283,14 @@ Internal.run_ensemble <- function(trainSet, testSet,
     pred_norm <- apply(pred_test, 1, function(x) sum(x * mod_weights_norm, na.rm = TRUE))
 
     if (return_base_res) {
-        output <- list(pred_norm = pred_norm, base_res = pred_ensemble, base_weights = mod_weights_norm)
+        output <- list(pred_norm = pred_norm, base_res = pred_ensemble, base_weights = mod_weights_norm, rf_hyperparams = rf_hyperparams)
     } else {
         output <- pred_norm
     }
     output
 }
 
-# save(data.FF4_qc, file = "data.FF4_qc.RData", compress = "xz", version = 2)
+# save(FF4_qc, file = "FF4_qc.RData", compress = "xz", version = 2)
 
 # devtools::check(document = T, cleanup = FALSE, manual = T, cran = F, check_dir = "/Volumes/Work/Projects/Helmholtz/TIGER/R_Package/TIGER")
 # devtools::document(roclets = c('rd', 'collate', 'namespace'))

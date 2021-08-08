@@ -1,4 +1,4 @@
-#' Demo dataset: Accompanying QC samples of KORA FF4
+#' Accompanying QC samples of KORA FF4 (demo data)
 #'
 #' @description This demo dataset, a data.frame with 232 rows (samples) and 108 columns (variables), includes four types of quality control (QC) samples from 29 kit plates:
 #' \itemize{
@@ -12,8 +12,8 @@
 #'
 #' When evaluating TIGER and other competing methods in our study, we used QC as training samples, and QC1, QC2, QC3 and cohort samples as test samples. The cohort data are operated by Helmholtz Zentrum München and available via KORA platform \url{https://www.helmholtz-muenchen.de/en/kora/index.html} upon reasonable request. See Reference for detailed information.
 #'
-#' @name data.FF4_qc
-#' @usage data(data.FF4_qc)
+#' @name FF4_qc
+#' @usage data(FF4_qc)
 #' @section Reference:
 #' Han S. \emph{et al}. TIGER: technical variation elimination for metabolomics data using ensemble learning architecture. (\emph{Submitted})
 NULL

@@ -11,9 +11,9 @@
 #' @examples
 #' RSD_1 <- compute_RSD(c(1:10))
 #'
-#' data(data.FF4_qc) # load demo dataset
+#' data(FF4_qc) # load demo dataset
 #'
-#' RSD_2 <- sapply(data.FF4_qc[data.FF4_qc$sampleType == "QC", -c(1:5)], compute_RSD)
+#' RSD_2 <- sapply(FF4_qc[FF4_qc$sampleType == "QC", -c(1:5)], compute_RSD)
 #' quantile(RSD_2)
 
 #' @export
@@ -40,30 +40,30 @@ compute_RSD <- function(input_data) {
 #' @details See \code{\link{run_TIGER}}.
 #'
 #' @examples
-#' data(data.FF4_qc) # load demo dataset
-#' QC_num <- data.FF4_qc[-c(1:5)] # only contain numeric metabolite values.
+#' data(FF4_qc) # load demo dataset
+#' QC_num <- FF4_qc[-c(1:5)] # only contain numeric metabolite values.
 #'
 #' # target values computed on the whole dataset:
 #' tarVal_1 <- compute_targetVal(QC_num = QC_num,
-#'                               sampleType = data.FF4_qc$sampleType,
-#'                               batchID = data.FF4_qc$plateID,
+#'                               sampleType = FF4_qc$sampleType,
+#'                               batchID = FF4_qc$plateID,
 #'                               targetVal_method = "mean",
 #'                               targetVal_batchWise = FALSE,
 #'                               targetVal_removeOutlier = TRUE)
 #'
 #' # target values computed on batches:
 #' tarVal_2 <- compute_targetVal(QC_num = QC_num,
-#'                               sampleType = data.FF4_qc$sampleType,
-#'                               batchID = data.FF4_qc$plateID,
+#'                               sampleType = FF4_qc$sampleType,
+#'                               batchID = FF4_qc$plateID,
 #'                               targetVal_method = "mean",
 #'                               targetVal_batchWise = TRUE,
 #'                               targetVal_removeOutlier = FALSE)
 #'
 #' # If coerce_numeric = TRUE,
 #' # columns cannot be coerced to numeric will be removed (with warnings):
-#' tarVal_3 <- compute_targetVal(QC_num = data.FF4_qc[-c(4:5)],
-#'                               sampleType = data.FF4_qc$sampleType,
-#'                               batchID = data.FF4_qc$plateID,
+#' tarVal_3 <- compute_targetVal(QC_num = FF4_qc[-c(4:5)],
+#'                               sampleType = FF4_qc$sampleType,
+#'                               batchID = FF4_qc$plateID,
 #'                               targetVal_method = "mean",
 #'                               targetVal_batchWise = TRUE,
 #'                               targetVal_removeOutlier = FALSE,
@@ -72,9 +72,9 @@ compute_RSD <- function(input_data) {
 #'
 #' # will throw errors if input data have non-numeric columns
 #' # and coerce_numeric = FALSE:
-#' tarVal_4 <- compute_targetVal(QC_num = data.FF4_qc,
-#'                               sampleType = data.FF4_qc$sampleType,
-#'                               batchID = data.FF4_qc$plateID,
+#' tarVal_4 <- compute_targetVal(QC_num = FF4_qc,
+#'                               sampleType = FF4_qc$sampleType,
+#'                               batchID = FF4_qc$plateID,
 #'                               targetVal_method = "mean",
 #'                               targetVal_batchWise = TRUE,
 #'                               targetVal_removeOutlier = FALSE,
@@ -146,7 +146,7 @@ compute_targetVal <- function(QC_num, sampleType, batchID,
 #' @param selectVar_corMethod a character string indicating which correlation coefficient is to be computed. One of \code{"spearman"} (default) or \code{"pearson"}. Can be abbreviated. See Details.
 #' @param selectVar_minNum an integer specifying the minimum number of the selected variables. If \code{NULL}, no limited, but 1 at least. See Details. Default: 5.
 #' @param selectVar_maxNum an integer specifying the maximum number of the selected variables. If \code{NULL}, no limited, but \code{ncol(train_num)} at most. See Details. Default: 10.
-#' @param selectVar_batchWise (advanced) logical. Specify whether the variable selection should be performed based on each batch. The support of batch-wise variable selection is provided for a customisable algorithm setting for the data requiring special processing. But in most case, batch-wise variable selection is not recommended. Setting \code{TRUE} can make the algorithm less robust. See Details. Default: \code{FALSE}.
+#' @param selectVar_batchWise (advanced) logical. Specify whether the variable selection should be performed based on each batch. Default: \code{FALSE}. \strong{Note}: if \code{TRUE}, batch ID of each sample are required. The support of batch-wise variable selection is provided for a customisable algorithm setting for the data requiring special processing. But in most case, batch-wise variable selection is not recommended. Setting \code{TRUE} can make the algorithm less robust. See Details.
 #' @param coerce_numeric logical. If \code{TRUE}, values in \code{train_num} and  \code{test_num} will be coerced to numeric before the computation. The columns cannot be coerced will be removed (with warnings). See Examples. Default: \code{FALSE}.
 #'
 #' @importFrom pbapply timerProgressBar
@@ -158,11 +158,11 @@ compute_targetVal <- function(QC_num, sampleType, batchID,
 #'
 #' @examples
 #'
-#' data(data.FF4_qc) # load demo dataset
+#' data(FF4_qc) # load demo dataset
 #'
 #' # QC as training samples; QC1, QC2 and QC3 as test samples:
-#' train_samples <- data.FF4_qc[data.FF4_qc$sampleType == "QC",]
-#' test_samples  <- data.FF4_qc[data.FF4_qc$sampleType != "QC",]
+#' train_samples <- FF4_qc[FF4_qc$sampleType == "QC",]
+#' test_samples  <- FF4_qc[FF4_qc$sampleType != "QC",]
 #'
 #' # Only numeric data of metabolite variables are allowed:
 #' train_num = train_samples[-c(1:5)]
@@ -180,7 +180,7 @@ compute_targetVal <- function(QC_num, sampleType, batchID,
 #'                                   selectVar_batchWise = FALSE)
 #'
 #' # If the selection is based on different batches:
-#' # (In this case, batch ID is required.)
+#' # (In selectVar_batchWise, batch ID is required.)
 #' selected_var_3 <- select_variable(train_num = train_num,
 #'                                   test_num  = NULL,
 #'                                   train_batchID = train_samples$plateID,
@@ -189,7 +189,9 @@ compute_targetVal <- function(QC_num, sampleType, batchID,
 #'
 #' # If coerce_numeric = TRUE,
 #' # columns cannot be coerced to numeric will be removed (with warnings):
-#' (In this example, columns of injection order and well position are excluded.)
+#' # (In this example, columns of injection order and well position are excluded.
+#' # Because we don't want to calculate the correlations between metabolites and
+#' # injection order/well position.)
 #' selected_var_4 <- select_variable(train_num = train_samples[-c(4,5)],
 #'                                   train_batchID = train_samples$plateID,
 #'                                   selectVar_batchWise = TRUE,
@@ -265,7 +267,7 @@ select_variable <- function(train_num, test_num = NULL,
             test_num_list     <- split(test_num,  f = test_batchID)
             batch_names_test  <- sort(names(test_num_list))
 
-            if (any(batch_names_train != batch_names_test) | batch_names_len != length(batch_names_test)) stop("    Batch names of train and test samples cannot match: their column names should be identical!")
+            if (any(batch_names_train != batch_names_test) | batch_names_len != length(batch_names_test)) stop("  Batch names of train and test samples cannot match: their column names should be identical!")
         } else test_num_list <- NULL
 
         selected_var_list <- lapply(1:batch_names_len, function(batch_name_idx) {
@@ -273,13 +275,13 @@ select_variable <- function(train_num, test_num = NULL,
             one_batch_name <- batch_names_train[[batch_name_idx]]
             message("  - Current batch: ", one_batch_name, "  (", batch_name_idx, "/", batch_names_len, ")")
 
-            message("    Computing correlation coefficients...")
+            message("      Computing correlation coefficients...")
             cor_info <- Internal.compute_cor(train_num = train_num_list[[one_batch_name]],
                                              test_num = test_num_list[[one_batch_name]],
                                              selectVar_corType = selectVar_corType,
                                              selectVar_corMethod = selectVar_corMethod)
 
-            message("    Selecting variables...")
+            message("      Selecting variables...")
             selected_var <- Internal.select_variable(cor_info = cor_info,
                                                      selectVar_minNum = selectVar_minNum,
                                                      selectVar_maxNum = selectVar_maxNum)
@@ -328,10 +330,10 @@ select_variable <- function(train_num, test_num = NULL,
 #' @param selectVar_corMethod a character string indicating which correlation coefficient is to be computed. One of \code{"spearman"} (default) or \code{"pearson"}. Can be abbreviated. Ignored if a list of selected variables has been assigned to \code{selectVar_external}.
 #' @param selectVar_minNum an integer specifying the minimum number of the selected metabolite variables (injection order and well position are not regarded as metabolite variables). If \code{NULL}, no limited, but 1 at least. Default: \code{5}. Ignored if a list of selected variables has been assigned to \code{selectVar_external}.
 #' @param selectVar_maxNum an integer specifying the maximum number of the selected metabolite variables(injection order and well position are not regarded as metabolite variables). If \code{NULL}, no limited, but no more than the number of all available metabolite variables. Default: \code{10}. Ignored if a list of selected variables has been assigned to \code{selectVar_external}.
-#' @param selectVar_batchWise (advanced) logical. Specify whether the variable selection should be performed based on each batch. The support of batch-wise variable selection is provided for a customisable algorithm setting for the data requiring special processing But in most case, batch-wise variable selection is not recommended. Setting \code{TRUE} can make the algorithm less robust. Default: \code{FALSE}. Ignored if a list of selected variables has been assigned to \code{selectVar_external}.
-#' @param mtry_percent (advanced) a numeric vector indicating the percentages of selected variables randomly sampled as candidates at each split when training the random forest models. Providing more values will train more models, which will increase the processing time. Default: \code{seq(0.2, 0.8, 0.2)}.
-#' @param nodesize_percent (advanced) a numeric vector indicating the percentages of sample size used as the minimum sizes of the terminal nodes in random forest models. Providing more values will train more models, which will increase the processing time. Default: \code{seq(0.2, 0.8, 0.2)}.
-#' @param ... (advanced) optional arguments (except \code{mtry} and \code{nodesize}) to be passed to \code{\link[randomForest]{randomForest}} for model training. Arguments \code{mtry} and \code{nodesize} are determined by \code{mtry_percent} and \code{nodesize_percent}. Default values are used for other arguments in \code{\link[randomForest]{randomForest}}. Providing more arguments will train more models, which will increase the processing time.
+#' @param selectVar_batchWise (advanced) logical. Specify whether the variable selection should be performed based on each batch. Default: \code{FALSE}. Ignored if a list of selected variables has been assigned to \code{selectVar_external}. \strong{Note}: the support of batch-wise variable selection is provided for a customisable algorithm setting for the data requiring special processing. But in most case, batch-wise variable selection is not recommended. Setting \code{TRUE} can make the algorithm less robust.
+#' @param mtry_percent (advanced) a numeric vector indicating the percentages of selected variables randomly sampled as candidates at each split when training the random forest models. \strong{Note}: providing more arguments will include more base learners into the ensemble model, which will increase the processing time. Default: \code{seq(0.2, 0.8, 0.2)}.
+#' @param nodesize_percent (advanced) a numeric vector indicating the percentages of sample size used as the minimum sizes of the terminal nodes in random forest models. \strong{Note}: providing more arguments will include more base learners into the ensemble model, which will increase the processing time. Default: \code{seq(0.2, 0.8, 0.2)}.
+#' @param ... (advanced) optional arguments (except \code{mtry} and \code{nodesize}) to be passed to \code{\link[randomForest]{randomForest}} for model training. Arguments \code{mtry} and \code{nodesize} are determined by \code{mtry_percent} and \code{nodesize_percent}. Default values are used for other arguments in \code{\link[randomForest]{randomForest}}. See Examples. \strong{Note}: providing more arguments will include more base learners into the ensemble model, which will increase the processing time.
 #' @param parallel.cores an integer (== -1 or >= 1) specifying the number of cores for parallel computation. Setting \code{-1} to run with all cores. Default: \code{2}.
 #'
 #' @importFrom caret createFolds
@@ -383,12 +385,108 @@ select_variable <- function(train_num, test_num = NULL,
 #'
 #' \code{mtry_percent}, \code{nodesize_percent} and \code{...}:
 #'
-#' Advanced options to specify \code{mtry}, \code{nodesize} and other related arguments in \code{\link[randomForest]{randomForest}} for a customised ensemble learning architecture.
+#' Advanced options to specify \code{mtry}, \code{nodesize} and other related arguments in \code{\link[randomForest]{randomForest}} for a customised ensemble learning architecture. See Examples.
 #'
 #' @section References:
 #' Han S. \emph{et al}. TIGER: technical variation elimination for metabolomics data using ensemble learning architecture. (\emph{Submitted})
 #'
 #' @examples
+#'
+#' \dontrun{
+#'
+#' data(FF4_qc) # load demo dataset
+#'
+#' # QC as training samples; QC1, QC2 and QC3 as test samples:
+#' train_samples <- FF4_qc[FF4_qc$sampleType == "QC",]
+#' test_samples  <- FF4_qc[FF4_qc$sampleType != "QC",]
+#'
+#' # col_sampleID includes labels. You can assign names for different samples:
+#' train_samples$sampleID <- "train"
+#' test_samples$sampleID <- "test"
+#'
+#' # Use default setting and
+#' # include injection order and well position into feature set:
+#' test_norm_1 <- run_TIGER(test_samples = test_samples,
+#'                          train_samples = train_samples,
+#'                          col_sampleID  = "sampleID",     # input column name
+#'                          col_sampleType = "sampleType",  # input column name
+#'                          col_batchID = "plateID",        # input column name
+#'                          col_order = "injectionOrder",   # input column name
+#'                          col_position = "wellPosition",  # input column name
+#'                          parallel.cores = -1)            # use all CPU cores
+#'
+#' # If the information of injection order and well position is not available,
+#' # or you don't want to use them:
+#' train_data <- train_samples[-c(4:5)]  # remove the two columns
+#' test_data  <- test_samples[-c(4:5)]   # remove the two columns
+#'
+#' test_norm_2 <- run_TIGER(test_samples = test_data,
+#'                          train_samples = train_data,
+#'                          col_sampleID  = "sampleID",
+#'                          col_sampleType = "sampleType",
+#'                          col_batchID = "plateID",
+#'                          col_order = NULL,                # set NULL
+#'                          col_position = NULL,             # set NULL
+#'                          parallel.cores = -1)
+#'
+#' # If use external target values and selected variables with
+#' # customised settings:
+#' target_val <- compute_targetVal(QC_num = train_samples[-c(1:5)],
+#'                                 sampleType = train_samples$sampleType,
+#'                                 batchID = train_samples$plateID,
+#'                                 targetVal_method = "median",
+#'                                 targetVal_batchWise = TRUE)
+#'
+#' select_var <- select_variable(train_num = train_samples[-c(1:5)],
+#'                               test_num = test_samples[-c(1:5)],
+#'                               train_batchID = train_samples$plateID,
+#'                               test_batchID = test_samples$plateID,
+#'                               selectVar_corType = "pcor",
+#'                               selectVar_corMethod = "spearman",
+#'                               selectVar_minNum = 10,
+#'                               selectVar_maxNum = 30,
+#'                               selectVar_batchWise = TRUE)
+#'
+#' test_norm_3 <- run_TIGER(test_samples = test_samples,
+#'                          train_samples = train_samples,
+#'                          col_sampleID  = "sampleID",
+#'                          col_sampleType = "sampleType",
+#'                          col_batchID = "plateID",
+#'                          col_order = "injectionOrder",
+#'                          col_position = "wellPosition",
+#'                          targetVal_external = target_val,
+#'                          selectVar_external = select_var,
+#'                          parallel.cores = -1)
+#'
+#' # The definitions of other hyperparameters correspond to
+#' # randomForest::randomForest().
+#' # If want to include more hyperparameters into model training,
+#' # put hyperparameter values like this:
+#' mtry_percent <- c(0.4, 0.8)
+#' nodesize_percent <- c(0.4, 0.8)
+#' replace <- c(TRUE, FALSE)
+#' ntree <- c(100, 200, 300)
+#'
+#' test_norm_4 <- run_TIGER(test_samples = test_data,
+#'                          train_samples = train_data,
+#'                          col_sampleID  = "sampleID",
+#'                          col_sampleType = "sampleType",
+#'                          col_batchID = "plateID",
+#'                          mtry_percent = mtry_percent,
+#'                          nodesize_percent = nodesize_percent,
+#'                          replace = replace,
+#'                          ntree = ntree,
+#'                          parallel.cores = 2)
+#'
+#' # test_norm_4 is corrected by the ensemble model consisted of base learners
+#' # trained with (around) 24 different hyperparameter combinations:
+#' expand.grid(mtry_percent, nodesize_percent, replace, ntree)
+#'
+#' # Note: mtry and nodesize are calculated by mtry_percent and nodesize_percent,
+#' #       duplicated hyperparameter combinations, if any, will be removed.
+#' #       Thus, the total number of hyperparameter combinations can be less than 24.
+#' #       This is determined by the shape of your input datasets.
+#' }
 #'
 #' @export
 #'
@@ -406,7 +504,7 @@ run_TIGER <- function(test_samples, train_samples,
 
                       mtry_percent = seq(0.2, 0.8, 0.2),
                       nodesize_percent = seq(0.2, 0.8, 0.2),
-                      ..., parallel.cores = 2, logName) {
+                      ..., parallel.cores = 2, logName = NA) {
 
     message("+ Initialising...   ", Sys.time())
 
@@ -468,6 +566,13 @@ run_TIGER <- function(test_samples, train_samples,
     } else {
         message("+ External target values loaded.   ", Sys.time())
         targetVal_list <- targetVal_external
+        if (length(targetVal_list) == 1 & names(targetVal_list[1]) == "wholeDataset") {
+            targetVal_batchWise <- FALSE
+        } else {
+            if (all(names(targetVal_list) %in% batchID_train)) {
+                targetVal_batchWise <- TRUE
+            } else stop("  Batch ID of targetVal_external cannot match your training data!")
+        }
     }
 
     # Variable selection
@@ -484,6 +589,13 @@ run_TIGER <- function(test_samples, train_samples,
     } else {
         message("+ External selected variables loaded.   ", Sys.time())
         var_selected_list <- selectVar_external
+        if (length(var_selected_list) == 1 & names(var_selected_list[1]) == "wholeDataset") {
+            selectVar_batchWise <- FALSE
+        } else {
+            if (all(names(var_selected_list) %in% batchID_test)) {
+                selectVar_batchWise <- TRUE
+            } else stop("  Batch ID of selectVar_external cannot match your test data!")
+        }
     }
 
     idx_test_na  <- is.na(test_samples)
@@ -495,7 +607,7 @@ run_TIGER <- function(test_samples, train_samples,
     message("  - Creating clusters...")
     parallel.cores <- ifelse(parallel.cores == -1, parallel::detectCores(), parallel.cores)
     cl <- parallel::makeCluster(parallel.cores, outfile = logName)
-    parallel::clusterExport(cl = cl, varlist = c("Internal.compute_errorRatio", "Internal.run_ensemble"))
+    parallel::clusterExport(cl = cl, varlist = c("Internal.compute_errorRatio", "Internal.run_ensemble"), envir = environment())
     pbapply::pboptions(type = "timer", style = 3, char = "=", txt.width = 70)
 
     # Original sample order backup
@@ -547,9 +659,10 @@ run_TIGER <- function(test_samples, train_samples,
             cat("debug: current var:", current_var, "current batch:", current_batch,
                 "shape:", nrow(trainSet), "*", ncol(trainSet),
                 "selected var:", names(trainSet), "\n")
+            browser()
             var_pred <- Internal.run_ensemble(trainSet = trainSet, testSet = testSet,
-                                              mtry_percent = seq(0.2, 0.8, 0.2),
-                                              nodesize_percent = seq(0.2, 0.8, 0.2),
+                                              mtry_percent = mtry_percent,
+                                              nodesize_percent = nodesize_percent,
                                               ... = ..., return_base_res = FALSE)
 
             if (targetVal_batchWise) {
@@ -562,6 +675,8 @@ run_TIGER <- function(test_samples, train_samples,
             names(var_pred) <- testSet$original_idx
             var_pred
         })
+        # save(res_batch_list, file = paste0("mod_", current_var, ".RData"))
+        # stop("")
         message("debug: out loop of batch")
         res_batch       <- do.call("c", res_batch_list)
         res_batch_order <- res_batch[order(as.numeric(names(res_batch)))]

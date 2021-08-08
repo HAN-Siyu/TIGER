@@ -36,30 +36,30 @@ This function provide an advanced option to calculate the target values of one r
 See \code{\link{run_TIGER}}.
 }
 \examples{
-data(data.FF4_qc) # load demo dataset
-QC_num <- data.FF4_qc[-c(1:5)] # only contain numeric metabolite values.
+data(FF4_qc) # load demo dataset
+QC_num <- FF4_qc[-c(1:5)] # only contain numeric metabolite values.
 
 # target values computed on the whole dataset:
 tarVal_1 <- compute_targetVal(QC_num = QC_num,
-                              sampleType = data.FF4_qc$sampleType,
-                              batchID = data.FF4_qc$plateID,
+                              sampleType = FF4_qc$sampleType,
+                              batchID = FF4_qc$plateID,
                               targetVal_method = "mean",
                               targetVal_batchWise = FALSE,
                               targetVal_removeOutlier = TRUE)
 
 # target values computed on batches:
 tarVal_2 <- compute_targetVal(QC_num = QC_num,
-                              sampleType = data.FF4_qc$sampleType,
-                              batchID = data.FF4_qc$plateID,
+                              sampleType = FF4_qc$sampleType,
+                              batchID = FF4_qc$plateID,
                               targetVal_method = "mean",
                               targetVal_batchWise = TRUE,
                               targetVal_removeOutlier = FALSE)
 
 # If coerce_numeric = TRUE,
 # columns cannot be coerced to numeric will be removed (with warnings):
-tarVal_3 <- compute_targetVal(QC_num = data.FF4_qc[-c(4:5)],
-                              sampleType = data.FF4_qc$sampleType,
-                              batchID = data.FF4_qc$plateID,
+tarVal_3 <- compute_targetVal(QC_num = FF4_qc[-c(4:5)],
+                              sampleType = FF4_qc$sampleType,
+                              batchID = FF4_qc$plateID,
                               targetVal_method = "mean",
                               targetVal_batchWise = TRUE,
                               targetVal_removeOutlier = FALSE,
@@ -68,9 +68,9 @@ identical(tarVal_2, tarVal_3)  # identical to tarVal_2
 
 # will throw errors if input data have non-numeric columns
 # and coerce_numeric = FALSE:
-tarVal_4 <- compute_targetVal(QC_num = data.FF4_qc,
-                              sampleType = data.FF4_qc$sampleType,
-                              batchID = data.FF4_qc$plateID,
+tarVal_4 <- compute_targetVal(QC_num = FF4_qc,
+                              sampleType = FF4_qc$sampleType,
+                              batchID = FF4_qc$plateID,
                               targetVal_method = "mean",
                               targetVal_batchWise = TRUE,
                               targetVal_removeOutlier = FALSE,

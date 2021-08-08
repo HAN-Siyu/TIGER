@@ -46,11 +46,11 @@ See \code{\link{run_TIGER}}.
 }
 \examples{
 
-data(data.FF4_qc) # load demo dataset
+data(FF4_qc) # load demo dataset
 
 # QC as training samples; QC1, QC2 and QC3 as test samples:
-train_samples <- data.FF4_qc[data.FF4_qc$sampleType == "QC",]
-test_samples  <- data.FF4_qc[data.FF4_qc$sampleType != "QC",]
+train_samples <- FF4_qc[FF4_qc$sampleType == "QC",]
+test_samples  <- FF4_qc[FF4_qc$sampleType != "QC",]
 
 # Only numeric data of metabolite variables are allowed:
 train_num = train_samples[-c(1:5)]

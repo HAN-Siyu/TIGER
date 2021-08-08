@@ -20,8 +20,8 @@ The RSD in this function is computed with the formula:
 \examples{
 RSD_1 <- compute_RSD(c(1:10))
 
-data(data.FF4_qc) # load demo dataset
+data(FF4_qc) # load demo dataset
 
-RSD_2 <- sapply(data.FF4_qc[data.FF4_qc$sampleType == "QC", -c(1:5)], compute_RSD)
+RSD_2 <- sapply(FF4_qc[FF4_qc$sampleType == "QC", -c(1:5)], compute_RSD)
 quantile(RSD_2)
 }

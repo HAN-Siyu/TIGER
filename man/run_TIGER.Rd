@@ -26,7 +26,7 @@ run_TIGER(
   nodesize_percent = seq(0.2, 0.8, 0.2),
   ...,
   parallel.cores = 2,
-  logName
+  logName = NA
 )
 }
 \arguments{
@@ -127,5 +127,82 @@ Han S. \emph{et al}. TIGER: technical variation elimination for metabolomics dat
 }
 
 \examples{
+
+\dontrun{
+data(FF4_qc) # load demo dataset
+
+# QC as training samples; QC1, QC2 and QC3 as test samples:
+train_samples <- FF4_qc[FF4_qc$sampleType == "QC",]
+test_samples  <- FF4_qc[FF4_qc$sampleType != "QC",]
+
+# col_sampleID includes labels. You can assign names for different samples:
+train_samples$sampleID <- "train"
+test_samples$sampleID <- "test"
+
+# Use default setting and
+# include injection order and well position into feature set:
+test_norm_1 <- run_TIGER(test_samples = test_samples,
+                         train_samples = train_samples,
+                         col_sampleID  = "sampleID",     # input column name
+                         col_sampleType = "sampleType",  # input column name
+                         col_batchID = "plateID",        # input column name
+                         col_order = "injectionOrder",   # input column name
+                         col_position = "wellPosition",  # input column name
+                         parallel.cores = -1)            # use all CPU cores
+
+# If the information of injection order and well position is not available,
+# or you don't want to use them:
+
+train_data <- train_samples[-c(4:5)]  # remove the two columns
+test_data  <- test_samples[-c(4:5)]   # remove the two columns
+test_norm_2 <- run_TIGER(test_samples = test_data,
+                         train_samples = train_data,
+                         col_sampleID  = "sampleID",
+                         col_sampleType = "sampleType",
+                         col_batchID = "plateID",
+                         col_order = NULL,                # set NULL
+                         col_position = NULL,             # set NULL
+                         parallel.cores = -1)
+
+# If use external target values and selected variables with
+# customised settings:
+
+target_val <- compute_targetVal(QC_num = train_samples[-c(1:5)],
+                                sampleType = train_samples$sampleType,
+                                batchID = train_samples$plateID,
+                                targetVal_method = "median",
+                                targetVal_batchWise = TRUE)
+
+select_var <- select_variable(train_num = train_samples[-c(1:5)],
+                              test_num = test_samples[-c(1:5)],
+                              train_batchID = train_samples$plateID,
+                              test_batchID = test_samples$plateID,
+                              selectVar_corType = "pcor",
+                              selectVar_corMethod = "spearman",
+                              selectVar_minNum = 10,
+                              selectVar_maxNum = 30,
+                              selectVar_batchWise = TRUE)
+
+test_norm_3 <- run_TIGER(test_samples = test_samples,
+                         train_samples = train_samples,
+                         col_sampleID  = "sampleID",
+                         col_sampleType = "sampleType",
+                         col_batchID = "plateID",
+                         col_order = "injectionOrder",
+                         col_position = "wellPosition",
+                         targetVal_external = target_val,
+                         selectVar_external = select_var,
+                         parallel.cores = -1)
+
+# If include more hyperparameters into model training:
+test_norm_2 <- run_TIGER(test_samples = test_data,
+                         train_samples = train_data,
+                         col_sampleID  = "sampleID",
+                         col_sampleType = "sampleType",
+                         col_batchID = "plateID",
+                         col_order = NULL,                # set NULL
+                         col_position = NULL,             # set NULL
+                         parallel.cores = -1)
+}
 
 }
