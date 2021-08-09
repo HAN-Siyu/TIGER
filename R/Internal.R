@@ -196,11 +196,11 @@ Internal.compute_targetVal <- function(input_col, targetVal_method = c("median",
     if (targetVal_removeOutlier) outlier_res <- Internal.boxplot.stats(input_col, coef = 1.5)$out
 
     if (targetVal_method == "mean") {
-        if (targetVal_removeOutlier) input_col[input_col %in% outlier_res] <- mean(input_col[!input_col %in% outlier_res], na.rm = T)
-        res <- mean(input_col, na.rm = T)
+        if (targetVal_removeOutlier) input_col[input_col %in% outlier_res] <- mean(input_col[!input_col %in% outlier_res], na.rm = TRUE)
+        res <- mean(input_col, na.rm = TRUE)
     } else {
-        if (targetVal_removeOutlier) input_col[input_col %in% outlier_res] <- median(input_col[!input_col %in% outlier_res], na.rm = T)
-        res <- median(input_col, na.rm = T)
+        if (targetVal_removeOutlier) input_col[input_col %in% outlier_res] <- median(input_col[!input_col %in% outlier_res], na.rm = TRUE)
+        res <- median(input_col, na.rm = TRUE)
     }
     res
 }
@@ -240,7 +240,7 @@ Internal.run_ensemble <- function(trainSet, testSet,
     pred_ensemble <- lapply(1:nrow(rf_hyperparams), function(idx) {
         current_hyperparams <- as.list(rf_hyperparams[idx,])
 
-        folds_train <- caret::createFolds(1:length(trainSet$y), k = 5, returnTrain = T)
+        folds_train <- caret::createFolds(1:length(trainSet$y), k = 5, returnTrain = TRUE)
 
         res_folds <- lapply(folds_train, function(train_idx, rf_params) {
 
@@ -259,7 +259,7 @@ Internal.run_ensemble <- function(trainSet, testSet,
             pred_loss
         })
 
-        mean_loss <- mean(unlist(res_folds), na.rm = T)
+        mean_loss <- mean(unlist(res_folds), na.rm = TRUE)
         mod_weight <- 1/exp(mean_loss)
 
         base_formula <- c(formula = as.formula(y ~ .), data = list(trainSet[!names(trainSet) %in% c("y_target", "y_raw")]),

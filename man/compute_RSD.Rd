@@ -15,7 +15,7 @@ This function computes the RSD (relative standard deviation) of the values in \c
 \details{
 The RSD in this function is computed by:
 
-\code{sd(input_data, na.rm = T) / mean(input_data, na.rm = T)}.
+\code{sd(input_data, na.rm = TRUE) / mean(input_data, na.rm = TRUE)}.
 }
 \examples{
 RSD_1 <- compute_RSD(c(1:10))

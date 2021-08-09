@@ -8,7 +8,7 @@
 #'
 #' @details The RSD in this function is computed by:
 #'
-#' \code{sd(input_data, na.rm = T) / mean(input_data, na.rm = T)}.
+#' \code{sd(input_data, na.rm = TRUE) / mean(input_data, na.rm = TRUE)}.
 #'
 #' @examples
 #' RSD_1 <- compute_RSD(c(1:10))
@@ -26,7 +26,7 @@
 #' @export
 
 compute_RSD <- function(input_data) {
-    val_RSD <- sd(input_data, na.rm = T) / mean(input_data, na.rm = T)
+    val_RSD <- sd(input_data, na.rm = TRUE) / mean(input_data, na.rm = TRUE)
     val_RSD
 }
 
@@ -34,7 +34,7 @@ compute_RSD <- function(input_data) {
 #'
 #' @description This function provides an advanced option to calculate the target values of one reference dataset (i.e. \code{QC_num}, numeric values of quality control samples). The generated target values (a list) can be further passed to argument \code{targetVal_external} in function \code{\link{run_TIGER}} such that TIGER can align the \code{test_samples} with the reference dataset. This is useful for longitudinal datasets correction and cross-kit adjustment. See case study section of our original paper for detailed explanation.
 #'
-#' @param QC_num a numeric data.frame including the metabolite values of quality control (QC) samples. Row: sample. Column: metabolite variable. See Examples.
+#' @param QC_num a numeric data.frame including the metabolite values of quality control (QC) samples. Missing values and infinite values will not be taken into account. Row: sample. Column: metabolite variable. See Examples.
 #' @param sampleType a vector corresponding to \code{QC_num} to specify the type of each QC sample. QC samples of the \strong{same type} should have the \strong{same type name}. See Examples.
 #' @param batchID a vector corresponding to \code{QC_num} to specify the batch of each sample. See Examples.
 #' @param targetVal_method a character string specifying how the target values are computed. Can be \code{"mean"} (default) or \code{"median"}. See Details.
@@ -320,7 +320,7 @@ select_variable <- function(train_num, test_num = NULL,
 #' \item batch ID (required): the batch of each sample,
 #' \item order information (optional): injection order or temporal information of each sample,
 #' \item position information (optional): well position of each sample,
-#' \item metabolite values (required): values to be normalised.
+#' \item metabolite values (required): values to be normalised. Infinite values are not allowed.
 #' }
 #' Row: sample. Column: variable. See Examples.
 #' @param train_samples (required) a data.frame containing the quality control (QC) samples used for model training. The columns in this data.frame should correspond to the columns in \code{test_samples}. And \code{test_samples} and \code{train_samples} should have the identical column names.
@@ -633,7 +633,7 @@ run_TIGER <- function(test_samples, train_samples,
 
     message("+ Data correction started.   ", Sys.time())
     parallel.cores <- ifelse(parallel.cores == -1, parallel::detectCores(), parallel.cores)
-    cl <- parallel::makeCluster(parallel.cores, outfile = "log")
+    cl <- parallel::makeCluster(parallel.cores)
     parallel::clusterExport(cl = cl, varlist = c("Internal.compute_errorRatio", "Internal.run_ensemble"), envir = environment())
     pbapply::pboptions(type = "timer", style = 3, char = "=", txt.width = 70)
 
@@ -645,7 +645,6 @@ run_TIGER <- function(test_samples, train_samples,
                                                      train_samples, test_samples, col_sampleID, col_sampleType,
                                                      col_batchID, col_order, col_position, batchID, mtry_percent,
                                                      targetVal_method, nodesize_percent, ...) {
-        message("debug: into loop of var")
         if (!targetVal_batchWise) {
             train_y_all <- Internal.compute_errorRatio(rawVal     = train_samples[[current_var]],
                                                        sampleType = train_samples[[col_sampleType]],
@@ -656,7 +655,6 @@ run_TIGER <- function(test_samples, train_samples,
         test_data <- cbind(y_raw = test_samples[[current_var]], test_samples)
 
         res_batch_list <- lapply(batchID, function(current_batch) {
-            message("debug: into loop of batch")
 
             train_X_batch <- train_samples[train_samples[[col_batchID]] == current_batch,]
 
@@ -681,29 +679,21 @@ run_TIGER <- function(test_samples, train_samples,
             trainSet <- cbind(train_y_batch, train_X_selected)
             testSet  <- test_data[test_data[[col_batchID]] == current_batch,]
 
-            message("debug: into ensemble")
-            cat("debug: current var:", current_var, "current batch:", current_batch,
-                "shape:", nrow(trainSet), "*", ncol(trainSet),
-                "selected var:", names(trainSet), "\n")
-            browser()
             var_pred <- Internal.run_ensemble(trainSet = trainSet, testSet = testSet,
                                               mtry_percent = mtry_percent,
                                               nodesize_percent = nodesize_percent,
                                               ... = ..., return_base_res = FALSE)
 
             if (targetVal_batchWise) {
-                message("debug: out ensemble, targetVal_batchWise - convert back")
                 test_targetVal_all   <- do.call(targetVal_method, list(test_data$y_raw, na.rm = TRUE))
                 test_targetVal_batch <- do.call(targetVal_method, list(testSet$y_raw,   na.rm = TRUE))
                 var_pred <- var_pred * test_targetVal_all / test_targetVal_batch
             }
-            message("debug: assign names")
+
             names(var_pred) <- testSet$original_idx
             var_pred
         })
-        # save(res_batch_list, file = paste0("mod_", current_var, ".RData"))
-        # stop("")
-        message("debug: out loop of batch")
+
         res_batch       <- do.call("c", res_batch_list)
         res_batch_order <- res_batch[order(as.numeric(names(res_batch)))]
         res_batch_df    <- data.frame(res_batch_order)

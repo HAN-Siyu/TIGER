@@ -36,7 +36,7 @@ run_TIGER(
 \item batch ID (required): the batch of each sample,
 \item order information (optional): injection order or temporal information of each sample,
 \item position information (optional): well position of each sample,
-\item metabolite values (required): values to be normalised.
+\item metabolite values (required): values to be normalised. Infinite values are not allowed.
 }
 Row: sample. Column: variable. See Examples.}
 

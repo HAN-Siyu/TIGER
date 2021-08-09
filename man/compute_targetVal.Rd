@@ -15,7 +15,7 @@ compute_targetVal(
 )
 }
 \arguments{
-\item{QC_num}{a numeric data.frame including the metabolite values of quality control (QC) samples. Row: sample. Column: metabolite variable. See Examples.}
+\item{QC_num}{a numeric data.frame including the metabolite values of quality control (QC) samples. Missing values and infinite values will not be taken into account. Row: sample. Column: metabolite variable. See Examples.}
 
 \item{sampleType}{a vector corresponding to \code{QC_num} to specify the type of each QC sample. QC samples of the \strong{same type} should have the \strong{same type name}. See Examples.}
 
