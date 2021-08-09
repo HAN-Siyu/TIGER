@@ -632,7 +632,6 @@ run_TIGER <- function(test_samples, train_samples,
     if (any(idx_train_na)) train_samples[idx_train_na] <- 0
 
     message("+ Data correction started.   ", Sys.time())
-    message("  - Creating clusters...")
     parallel.cores <- ifelse(parallel.cores == -1, parallel::detectCores(), parallel.cores)
     cl <- parallel::makeCluster(parallel.cores, outfile = "log")
     parallel::clusterExport(cl = cl, varlist = c("Internal.compute_errorRatio", "Internal.run_ensemble"), envir = environment())
@@ -641,7 +640,6 @@ run_TIGER <- function(test_samples, train_samples,
     # Original sample order backup
     test_samples <- cbind(original_idx = 1:nrow(test_samples), test_samples)
 
-    message("  - Correcting data...")
     res_var <- pbapply::pblapply(var_names, function(current_var, var_selected_list, targetVal_list,
                                                      targetVal_batchWise, selectVar_batchWise,
                                                      train_samples, test_samples, col_sampleID, col_sampleType,

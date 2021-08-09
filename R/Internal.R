@@ -291,8 +291,6 @@ Internal.run_ensemble <- function(trainSet, testSet,
 }
 
 # save(FF4_qc, file = "FF4_qc.RData", compress = "xz", version = 2)
-
-# devtools::check(document = T, manual = T, cran = T, check_dir = "/Volumes/Work/Projects/Helmholtz/TIGER/R_Package/TIGER")
 # devtools::document(roclets = c('rd', 'collate', 'namespace'))
 # devtools::build_manual()
 # usethis::use_cran_comments()
