@@ -1,6 +1,0 @@
-^.*\.Rproj$
-^\.Rproj\.user$
-\.gitignore
-^\.git$
-\.Rhistory
-\.DS_Store

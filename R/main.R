@@ -634,7 +634,7 @@ run_TIGER <- function(test_samples, train_samples,
     message("+ Data correction started.   ", Sys.time())
     message("  - Creating clusters...")
     parallel.cores <- ifelse(parallel.cores == -1, parallel::detectCores(), parallel.cores)
-    cl <- parallel::makeCluster(parallel.cores)
+    cl <- parallel::makeCluster(parallel.cores, outfile = "log")
     parallel::clusterExport(cl = cl, varlist = c("Internal.compute_errorRatio", "Internal.run_ensemble"), envir = environment())
     pbapply::pboptions(type = "timer", style = 3, char = "=", txt.width = 70)
 
