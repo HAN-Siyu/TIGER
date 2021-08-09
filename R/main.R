@@ -1,12 +1,12 @@
 #' Compute RSD (relative standard deviation)
 #'
-#' @description This function compute the RSD (relative standard deviation) of the values in input_data. Missing values are removed before the computation automatically.
+#' @description This function computes the RSD (relative standard deviation) of the values in \code{input_data}. Missing values are removed before the computation automatically.
 #'
 #' @param input_data a numeric vector
 #'
 #' @importFrom stats sd
 #'
-#' @details The RSD in this function is computed with the formula:
+#' @details The RSD in this function is computed by:
 #'
 #' \code{sd(input_data, na.rm = T) / mean(input_data, na.rm = T)}.
 #'
@@ -15,8 +15,14 @@
 #'
 #' data(FF4_qc) # load demo dataset
 #'
+#' # RSD of QC:
 #' RSD_2 <- sapply(FF4_qc[FF4_qc$sampleType == "QC", -c(1:5)], compute_RSD)
 #' quantile(RSD_2)
+#'
+#' # RSD of different types of QC samples:
+#' # (each metabolote has its own RSD)
+#' RSD_3 <- aggregate(FF4_qc[-c(1:5)], by = list(Type = FF4_qc$sampleType),
+#'                    FUN = compute_RSD)
 #' @export
 
 compute_RSD <- function(input_data) {
@@ -26,10 +32,10 @@ compute_RSD <- function(input_data) {
 
 #' Compute target values for ensemble learning architecture
 #'
-#' @description This function provide an advanced option to calculate the target values of one reference dataset (\code{QC_num}, numeric values of quality control samples). The generated target values (a list) can be further passed to the argument \code{targetVal_external} in function \code{\link{run_TIGER}} such that TIGER can align the \code{test_samples} in function \code{\link{run_TIGER}} with the reference dataset. This is useful for longitudinal datasets correction and cross-kit adjustment. See case study section of our original paper for detailed explanation.
+#' @description This function provides an advanced option to calculate the target values of one reference dataset (i.e. \code{QC_num}, numeric values of quality control samples). The generated target values (a list) can be further passed to argument \code{targetVal_external} in function \code{\link{run_TIGER}} such that TIGER can align the \code{test_samples} with the reference dataset. This is useful for longitudinal datasets correction and cross-kit adjustment. See case study section of our original paper for detailed explanation.
 #'
 #' @param QC_num a numeric data.frame including the metabolite values of quality control (QC) samples. Row: sample. Column: metabolite variable. See Examples.
-#' @param sampleType a vector corresponding to \code{QC_num} to specify the type of each sample. QC samples of the \strong{same type} should have the \strong{same type name}. See Examples.
+#' @param sampleType a vector corresponding to \code{QC_num} to specify the type of each QC sample. QC samples of the \strong{same type} should have the \strong{same type name}. See Examples.
 #' @param batchID a vector corresponding to \code{QC_num} to specify the batch of each sample. See Examples.
 #' @param targetVal_method a character string specifying how the target values are computed. Can be \code{"mean"} (default) or \code{"median"}. See Details.
 #' @param targetVal_batchWise logical. If \code{TRUE}, the target values will be computed based on each batch, otherwise, based on the whole dataset. Setting \code{TRUE} might be useful if your dataset has very obvious batch effects, but this may also make the algorithm less robust. See Details. Default: \code{FALSE}.
@@ -139,17 +145,17 @@ compute_targetVal <- function(QC_num, sampleType, batchID,
 
 #' Select variables for ensemble learning architecture
 #'
-#' @description This function provides an advanced option to select metabolite variables from external dataset(s). The selected variables (as a list) can be further passed to the argument \code{selectVar_external} in function \code{\link{run_TIGER}} for a customised data correction.
+#' @description This function provides an advanced option to select metabolite variables from external dataset(s). The selected variables (as a list) can be further passed to argument \code{selectVar_external} in function \code{\link{run_TIGER}} for a customised data correction.
 #'
 #' @param train_num a numeric data.frame \strong{only} including the metabolite values of training samples (can be quality control samples). Information such as injection order or well position need to be excluded. Row: sample. Column: metabolite variable. See Examples.
-#' @param test_num an optional numeric data.frame including the metabolite values of test samples (can be subject samples). If provided, the column names of \code{test_num} should correspond to the column names of \code{train_num}. Row: sample. Column: metabolite variable. See Examples. If \code{NULL}, the variables will be selected based on \code{train_num} only.
+#' @param test_num an optional numeric data.frame including the metabolite values of test samples (can be subject samples). If provided, the column names of \code{test_num} should correspond to the column names of \code{train_num}. Row: sample. Column: metabolite variable. If \code{NULL}, the variables will be selected based on \code{train_num} only. See Examples.
 #' @param train_batchID \code{NULL} or a vector corresponding to \code{train_num} to specify the batch of each sample. Ignored if \code{selectVar_batchWise = FALSE}. See Examples.
 #' @param test_batchID \code{NULL} or a vector corresponding to \code{test_num} to specify the batch of each sample. Ignored if \code{selectVar_batchWise = FALSE}. See Examples.
 #' @param selectVar_corType a character string indicating correlation (\code{"cor"}, default) or partial correlation (\code{"pcor"}) is to be used. Can be abbreviated. See Details. \strong{Note}: computing partial correlations of a large dataset can be very time-consuming.
 #' @param selectVar_corMethod a character string indicating which correlation coefficient is to be computed. One of \code{"spearman"} (default) or \code{"pearson"}. Can be abbreviated. See Details.
 #' @param selectVar_minNum an integer specifying the minimum number of the selected variables. If \code{NULL}, no limited, but 1 at least. See Details. Default: 5.
 #' @param selectVar_maxNum an integer specifying the maximum number of the selected variables. If \code{NULL}, no limited, but \code{ncol(train_num) - 1} at most. See Details. Default: 10.
-#' @param selectVar_batchWise (advanced) logical. Specify whether the variable selection should be performed based on each batch. Default: \code{FALSE}. \strong{Note}: if \code{TRUE}, batch ID of each sample are required. The support of batch-wise variable selection is provided for the data requiring special processing. But in most case, batch-wise variable selection is not recommended. Setting \code{TRUE} can make the algorithm less robust. See Details.
+#' @param selectVar_batchWise (advanced) logical. Specify whether the variable selection should be performed based on each batch. Default: \code{FALSE}. \strong{Note}: if \code{TRUE}, batch ID of each sample are required. The support of batch-wise variable selection is provided for data requiring special processing. But in most case, batch-wise variable selection is not recommended. Setting \code{TRUE} can make the algorithm less robust. See Details.
 #' @param coerce_numeric logical. If \code{TRUE}, values in \code{train_num} and  \code{test_num} will be coerced to numeric before the computation. The columns cannot be coerced will be removed (with warnings). See Examples. Default: \code{FALSE}.
 #'
 #' @importFrom pbapply timerProgressBar
@@ -307,35 +313,35 @@ select_variable <- function(train_num, test_num = NULL,
 #' Run TIGER to eliminate technical variation
 #' @description Use TIGER algorithm to eliminate the technical variation in metabolomics data. TIGER supports targeted and untargeted metabolomics data and is competent to perform both intra- and inter-batch technical variation removal.
 #'
-#' @param test_samples (required) a data.frame containing the test samples (subject samples). This data.frame should contain columns of
+#' @param test_samples (required) a data.frame containing the samples to be corrected (for example, subject samples). This data.frame should contain columns of
 #' \itemize{
-#' \item sample ID (required): label for each sample,
+#' \item sample ID (required): name or label for each sample,
 #' \item sample type (required): indicating the type of each sample,
 #' \item batch ID (required): the batch of each sample,
 #' \item order information (optional): injection order or temporal information of each sample,
-#' \item position information (optional): well position of each sample)columns of metabolite values,
+#' \item position information (optional): well position of each sample,
 #' \item metabolite values (required): values to be normalised.
 #' }
 #' Row: sample. Column: variable. See Examples.
-#' @param train_samples (required) a data.frame containing the training samples (quality control samples). The columns in this data.frame should correspond to the columns in \code{test_samples}. \code{test_samples} and \code{train_samples} should have the identical column names.
+#' @param train_samples (required) a data.frame containing the quality control (QC) samples used for model training. The columns in this data.frame should correspond to the columns in \code{test_samples}. And \code{test_samples} and \code{train_samples} should have the identical column names.
 #' @param col_sampleID  (required) a character string indicating the name of the column that specifies the sample ID of each sample. The values in this column will not affect the data correction process but can act as labels for different samples. See Examples.
-#' @param col_sampleType (required) a character string indicating the name of the column that specifies the type (such as QC1, QC2, subject) of each sample. This column in the \code{train_samples} can be used to indicate different kinds of QC samples. QC samples of the \strong{same type} should have the \strong{same type name}. See Examples.
+#' @param col_sampleType (required) a character string indicating the name of the column that specifies the type (such as QC1, QC2, subject) of each sample. This column of \code{train_samples} can be used to indicate different kinds of QC samples. QC samples of the \strong{same type} should have the \strong{same type name}. See Examples.
 #' @param col_batchID (required) a character string indicating the name of the column that specifies the batch ID of each sample. See Examples.
-#' @param col_order (optional) \code{NULL} or a character string indicating the name of the column that contains the injection order or temporal information (numeric values). This can explicitly ask the algorithm capture the technical variation introduced by injection order, which might be useful when the data have very obvious temporal drifts. If \code{NULL} (default), the input \code{train_samples} and \code{test_samples} should have \strong{No} column contains injection order information.
-#' @param col_position (optional) \code{NULL} or a character string indicating the name of the column that contains the well position information (numeric values). This can explicitly ask the algorithm capture the technical variation introduced by well position, which might be useful when the well position has a great impact during data acquisition. If \code{NULL} (default), the input \code{train_samples} and \code{test_samples} should have \strong{No} column contains well position information.
+#' @param col_order (optional) \code{NULL} or a character string indicating the name of the column that contains the injection order or temporal information (numeric values). This can explicitly ask the algorithm capture the technical variation introduced by injection order, which might be useful when your data have very obvious temporal drifts. If \code{NULL} (default), \code{train_samples} and \code{test_samples} should have \strong{No} column contains injection order information.
+#' @param col_position (optional) \code{NULL} or a character string indicating the name of the column that contains the well position information (numeric values). This can explicitly ask the algorithm capture the technical variation introduced by well position, which might be useful when the well position has a great impact during data acquisition. If \code{NULL} (default), \code{train_samples} and \code{test_samples} should have \strong{No} column contains well position information.
 #' @param targetVal_external (optional) a list generated by function \code{\link{compute_targetVal}}. See Details.
-#' @param targetVal_method a character string specifying how the target values are computed. Can be \code{"mean"} (default) or \code{"median"}. Ignored if a list of external target values has been assigned to  \code{targetVal_external}.
+#' @param targetVal_method a character string specifying how target values are to be computed. Can be \code{"mean"} (default) or \code{"median"}. Ignored if a list of external target values has been assigned to  \code{targetVal_external}.
 #' @param targetVal_batchWise logical. If \code{TRUE}, the target values will be computed based on each batch, otherwise, based on the whole dataset. Setting \code{TRUE} might be useful if your dataset has very obvious batch effects, but this may also make the algorithm less robust. Default: \code{FALSE}. Ignored if a list of external target values has been assigned to  \code{targetVal_external}.
 #' @param targetVal_removeOutlier logical. If \code{TRUE}, outliers will be removed before the computation. Outliers are determined with 1.5 * IQR (interquartile range) rule. We recommend turning this off when the target values are computed based on batches. Default: \code{!targetVal_batchWise}. Ignored if a list of external target values has been assigned to  \code{targetVal_external}.
 #' @param selectVar_external (optional) a list generated by function \code{\link{select_variable}}. See Details.
 #' @param selectVar_corType a character string indicating correlation (\code{"cor"}, default) or partial correlation (\code{"pcor"}) is to be used. Can be abbreviated. Ignored if a list of selected variables has been assigned to \code{selectVar_external}. \strong{Note}: computing partial correlations of a large dataset can be very time-consuming.
 #' @param selectVar_corMethod a character string indicating which correlation coefficient is to be computed. One of \code{"spearman"} (default) or \code{"pearson"}. Can be abbreviated. Ignored if a list of selected variables has been assigned to \code{selectVar_external}.
 #' @param selectVar_minNum an integer specifying the minimum number of the selected metabolite variables (injection order and well position are not regarded as metabolite variables). If \code{NULL}, no limited, but 1 at least. Default: \code{5}. Ignored if a list of selected variables has been assigned to \code{selectVar_external}.
-#' @param selectVar_maxNum an integer specifying the maximum number of the selected metabolite variables(injection order and well position are not regarded as metabolite variables). If \code{NULL}, no limited, but no more than the number of all available metabolite variables. Default: \code{10}. Ignored if a list of selected variables has been assigned to \code{selectVar_external}.
-#' @param selectVar_batchWise (advanced) logical. Specify whether the variable selection should be performed based on each batch. Default: \code{FALSE}. Ignored if a list of selected variables has been assigned to \code{selectVar_external}. \strong{Note}: the support of batch-wise variable selection is provided for the data requiring special processing. But in most case, batch-wise variable selection is not recommended. Setting \code{TRUE} can make the algorithm less robust.
-#' @param mtry_percent (advanced) a numeric vector indicating the percentages of selected variables randomly sampled as candidates at each split when training the random forest models. \strong{Note}: providing more arguments will include more base learners into the ensemble model, which will increase the processing time. Default: \code{seq(0.2, 0.8, 0.2)}.
-#' @param nodesize_percent (advanced) a numeric vector indicating the percentages of sample size used as the minimum sizes of the terminal nodes in random forest models. \strong{Note}: providing more arguments will include more base learners into the ensemble model, which will increase the processing time. Default: \code{seq(0.2, 0.8, 0.2)}.
-#' @param ... (advanced) optional arguments (except \code{mtry} and \code{nodesize}) to be passed to \code{\link[randomForest]{randomForest}} for model training. Arguments \code{mtry} and \code{nodesize} are determined by \code{mtry_percent} and \code{nodesize_percent}. Default values are used for other arguments in \code{\link[randomForest]{randomForest}}. See Examples. \strong{Note}: providing more arguments will include more base learners into the ensemble model, which will increase the processing time.
+#' @param selectVar_maxNum an integer specifying the maximum number of the selected metabolite variables (injection order and well position are not regarded as metabolite variables). If \code{NULL}, no limited, but no more than the number of all available metabolite variables. Default: \code{10}. Ignored if a list of selected variables has been assigned to \code{selectVar_external}.
+#' @param selectVar_batchWise (advanced) logical. Specify whether the variable selection should be performed based on each batch. Default: \code{FALSE}. Ignored if a list of selected variables has been assigned to \code{selectVar_external}. \strong{Note}: the support of batch-wise variable selection is provided for data requiring special processing. But in most case, batch-wise variable selection is not recommended. Setting \code{TRUE} can make the algorithm less robust.
+#' @param mtry_percent (advanced) a numeric vector indicating the percentages of selected variables randomly sampled as candidates at each split when training random forest models (base learners). \strong{Note}: providing more arguments will include more base learners into the ensemble model, which will increase the processing time. Default: \code{seq(0.2, 0.8, 0.2)}.
+#' @param nodesize_percent (advanced) a numeric vector indicating the percentages of sample size used as the minimum sizes of the terminal nodes in random forest models (base learners). \strong{Note}: providing more arguments will include more base learners into the ensemble model, which will increase the processing time. Default: \code{seq(0.2, 0.8, 0.2)}.
+#' @param ... (advanced) optional arguments (except \code{mtry} and \code{nodesize}) to be passed to \code{\link[randomForest]{randomForest}} for model training. Arguments \code{mtry} and \code{nodesize} are determined by \code{mtry_percent} and \code{nodesize_percent}. See \code{\link[randomForest]{randomForest}} and Examples. \strong{Note}: providing more arguments will include more base learners into the ensemble model, which will increase the processing time.
 #' @param parallel.cores an integer (== -1 or >= 1) specifying the number of cores for parallel computation. Setting \code{-1} to run with all cores. Default: \code{2}.
 #'
 #' @importFrom caret createFolds
@@ -360,18 +366,18 @@ select_variable <- function(train_num, test_num = NULL,
 #' @importFrom stats sd
 #'
 #' @details
-#' TIGER can effectively process the datasets with its default setup. The following hyperparameters are provided to customise the algorithm and achieve better performance for some special purposes (such as cross-kit adjustment, longitudinal dataset correction) or the datasets requiring special processing (for example, data with very strong temporal drifts or batch effects). We recommend users to examine the normalised result with different metrics, such as RSD (relative standard deviation), MAPE (mean absolute percentage error) and PCA (principal component analysis), especially when tuning advanced options of TIGER.
+#' TIGER can effectively process the datasets with its default setup. The following hyperparameters are provided to customise the algorithm and achieve better performance for some special purposes (such as cross-kit adjustment, longitudinal dataset correction) or datasets requiring special processing (for example, data with very strong temporal drifts or batch effects). We recommend users to examine the normalised result with different metrics, such as RSD (relative standard deviation), MAPE (mean absolute percentage error) and PCA (principal component analysis), especially when using advanced options of TIGER.
 #'
 #' \strong{Hyperparameters for target value computation}
 #'
 #' \itemize{
 #' \item \code{targetVal_external}
 #'
-#' TIGER by default captures and eliminate the technical variation within the input dataset, and the target values are automatically computed from \code{train_samples}. The target values can also be calculated from a reference dataset using function \code{\link{compute_targetVal}} and then passed to this function as an argument. This will enable TIGER to align \code{test_samples} with the reference dataset. In this case, \code{train_samples} is still the accompanying quality control (QC) samples of \code{test_samples}. And argument \code{targetVal_external} accepts external target values (a list). If the list of external target values is provided, values in \code{targetVal_method}, \code{targetVal_batchWise} and \code{targetVal_removeOutlier} will be ignored.
+#' TIGER by default captures and eliminate the technical variation within the input dataset, and the target values are automatically computed from \code{train_samples}. The target values can also be calculated from a reference dataset using function \code{\link{compute_targetVal}} and then passed to this function as an argument. This will enable TIGER to align \code{test_samples} with the reference dataset. In this case, \code{train_samples} is still the accompanying QC samples of \code{test_samples}. And argument \code{targetVal_external} accepts external target values (a list). If the list of external target values is provided, values in \code{targetVal_method}, \code{targetVal_batchWise} and \code{targetVal_removeOutlier} will be ignored.
 #'
 #' \item \code{targetVal_method}
 #'
-#' The target values can be the mean or median values of different metabolites. The target values of different kinds of QC samples are computed separately. \code{"mean"} is recommended here, but the optimal selection can differ for different datasets.
+#' The target values can be the mean or median values of metabolite values. The target values of different kinds of QC samples are computed separately. \code{"mean"} is recommended here, but the optimal selection can differ for different datasets.
 #'
 #' \item \code{targetVal_batchWise}
 #'
@@ -379,7 +385,7 @@ select_variable <- function(train_num, test_num = NULL,
 #'
 #' \item  \code{targetVal_removeOutlier}
 #'
-#' If computing is based on the whole dataset (\code{targetVal_batchWise = TRUE}), users can remove the outliers in each metabolite by setting \code{targetVal_removeOutlier} as \code{TRUE}. This can weaken the impact of extreme values. If \code{targetVal_batchWise = FALSE}, it is generally not recommended to remove outliers, as we assume the data have strong batch effects and contain extreme values—we hope TIGER can take these extreme values into account. Code for checking outliers is adapted from \code{\link[grDevices]{boxplot.stats}}.
+#' If computing is based on the whole dataset (\code{targetVal_batchWise = TRUE}), users can remove the outliers in each metabolite by setting \code{targetVal_removeOutlier} as \code{TRUE}. This can weaken the impact of extreme values. If \code{targetVal_batchWise = FALSE}, it is generally not recommended to remove outliers, as we assume the input data have strong batch effects and contain extreme values—we hope TIGER can take these into account. Code for checking outliers is adapted from \code{\link[grDevices]{boxplot.stats}}.
 #' }
 #'
 #' \strong{Hyperparameters for variable selection}
@@ -395,7 +401,7 @@ select_variable <- function(train_num, test_num = NULL,
 #'
 #' \item \code{selectVar_minNum} and \code{selectVar_maxNum}:
 #'
-#' For an objective metabolite to be corrected, the intersection of its top \emph{t} highly-correlated metabolites calculated from training and test samples are selected to train the ensemble model. The highly-correlated metabolites are the ones with correlation coefficients greater than 0.5 (the objective metabolite itself will not be regarded as its highly-correlated metabolite to train models). Arguments \code{selectVar_minNum} and \code{selectVar_maxNum} are used to avoid selecting too many or too few metabolites. Selecting too many metabolites can lower the process, sometimes even lower the accuracy.
+#' For an objective metabolite to be corrected, the intersection of its top \emph{t} highly-correlated metabolites calculated from training and test samples are selected to train the ensemble model. The highly-correlated metabolites are the ones with correlation coefficients greater than 0.5 (the objective metabolite itself will not be regarded as its highly-correlated metabolite). Arguments \code{selectVar_minNum} and \code{selectVar_maxNum} are used to avoid selecting too many or too few metabolites. Selecting too many metabolites can lower the process, sometimes even lower the accuracy.
 #'
 #' \item \code{selectVar_batchWise}:
 #'

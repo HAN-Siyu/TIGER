@@ -17,7 +17,7 @@ compute_targetVal(
 \arguments{
 \item{QC_num}{a numeric data.frame including the metabolite values of quality control (QC) samples. Row: sample. Column: metabolite variable. See Examples.}
 
-\item{sampleType}{a vector corresponding to \code{QC_num} to specify the type of each sample. QC samples of the \strong{same type} should have the \strong{same type name}. See Examples.}
+\item{sampleType}{a vector corresponding to \code{QC_num} to specify the type of each QC sample. QC samples of the \strong{same type} should have the \strong{same type name}. See Examples.}
 
 \item{batchID}{a vector corresponding to \code{QC_num} to specify the batch of each sample. See Examples.}
 
@@ -30,7 +30,7 @@ compute_targetVal(
 \item{coerce_numeric}{logical. If \code{TRUE}, values in \code{QC_num} will be coerced to numeric before the computation. The columns cannot be coerced will be removed (with warnings). See Examples. Default: \code{FALSE}.}
 }
 \description{
-This function provide an advanced option to calculate the target values of one reference dataset (\code{QC_num}, numeric values of quality control samples). The generated target values (a list) can be further passed to the argument \code{targetVal_external} in function \code{\link{run_TIGER}} such that TIGER can align the \code{test_samples} in function \code{\link{run_TIGER}} with the reference dataset. This is useful for longitudinal datasets correction and cross-kit adjustment. See case study section of our original paper for detailed explanation.
+This function provides an advanced option to calculate the target values of one reference dataset (i.e. \code{QC_num}, numeric values of quality control samples). The generated target values (a list) can be further passed to argument \code{targetVal_external} in function \code{\link{run_TIGER}} such that TIGER can align the \code{test_samples} with the reference dataset. This is useful for longitudinal datasets correction and cross-kit adjustment. See case study section of our original paper for detailed explanation.
 }
 \details{
 See \code{\link{run_TIGER}}.

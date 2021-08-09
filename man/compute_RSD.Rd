@@ -10,10 +10,10 @@ compute_RSD(input_data)
 \item{input_data}{a numeric vector}
 }
 \description{
-This function compute the RSD (relative standard deviation) of the values in input_data. Missing values are removed before the computation automatically.
+This function computes the RSD (relative standard deviation) of the values in \code{input_data}. Missing values are removed before the computation automatically.
 }
 \details{
-The RSD in this function is computed with the formula:
+The RSD in this function is computed by:
 
 \code{sd(input_data, na.rm = T) / mean(input_data, na.rm = T)}.
 }
@@ -22,6 +22,12 @@ RSD_1 <- compute_RSD(c(1:10))
 
 data(FF4_qc) # load demo dataset
 
+# RSD of QC:
 RSD_2 <- sapply(FF4_qc[FF4_qc$sampleType == "QC", -c(1:5)], compute_RSD)
 quantile(RSD_2)
+
+# RSD of different types of QC samples:
+# (each metabolote has its own RSD)
+RSD_3 <- aggregate(FF4_qc[-c(1:5)], by = list(Type = FF4_qc$sampleType),
+                   FUN = compute_RSD)
 }

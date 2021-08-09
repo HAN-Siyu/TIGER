@@ -7,7 +7,7 @@
 data(FF4_qc)
 }
 \description{
-This demo dataset, a data.frame with 232 rows (samples) and 108 columns (variables), includes four types of quality control (QC) samples from 29 kit plates:
+This demo dataset, a data.frame with 232 samples (rows) and 108 variables (columns). The dataset includes four types of quality control (QC) samples from 29 kit plates:
 \itemize{
 \item QC1 (\emph{N} = 29, one per plate),
 \item QC2 (\emph{N} = 29, one per plate),
