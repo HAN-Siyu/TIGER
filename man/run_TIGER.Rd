@@ -70,7 +70,7 @@ Row: sample. Column: variable. See Examples.}
 
 \item{selectVar_maxNum}{an integer specifying the maximum number of the selected metabolite variables (injection order and well position are not regarded as metabolite variables). If \code{NULL}, no limited, but no more than the number of all available metabolite variables. Default: \code{10}. Ignored if a list of selected variables has been assigned to \code{selectVar_external}.}
 
-\item{selectVar_batchWise}{(advanced) logical. Specify whether the variable selection should be performed based on each batch. Default: \code{FALSE}. Ignored if a list of selected variables has been assigned to \code{selectVar_external}. \strong{Note}: the support of batch-wise variable selection is provided for data requiring special processing. But in most case, batch-wise variable selection is not recommended. Setting \code{TRUE} can make the algorithm less robust.}
+\item{selectVar_batchWise}{(advanced) logical. Specify whether the variable selection should be performed based on each batch. Default: \code{FALSE}. Ignored if a list of selected variables has been assigned to \code{selectVar_external}. \strong{Note}: the support of batch-wise variable selection is provided for data requiring special processing (for example, data with strong batch effects). But in most case, batch-wise variable selection is not necessary. Setting \code{TRUE} can make the algorithm less robust.}
 
 \item{mtry_percent}{(advanced) a numeric vector indicating the percentages of selected variables randomly sampled as candidates at each split when training random forest models (base learners). \strong{Note}: providing more arguments will include more base learners into the ensemble model, which will increase the processing time. Default: \code{seq(0.2, 0.8, 0.2)}.}
 
@@ -84,7 +84,7 @@ Row: sample. Column: variable. See Examples.}
 Use TIGER algorithm to eliminate the technical variation in metabolomics data. TIGER supports targeted and untargeted metabolomics data and is competent to perform both intra- and inter-batch technical variation removal.
 }
 \details{
-TIGER can effectively process the datasets with its default setup. The following hyperparameters are provided to customise the algorithm and achieve better performance for some special purposes (such as cross-kit adjustment, longitudinal dataset correction) or datasets requiring special processing (for example, data with very strong temporal drifts or batch effects). We recommend users to examine the normalised result with different metrics, such as RSD (relative standard deviation), MAPE (mean absolute percentage error) and PCA (principal component analysis), especially when using advanced options of TIGER.
+TIGER can effectively process the datasets with its default setup. The following hyperparameters are provided to customise the algorithm and achieve the best possible performance. These hyperparameters are also practical for some special purposes (such as cross-kit adjustment, longitudinal dataset correction) or datasets requiring special processing (for example, data with very strong temporal drifts or batch effects). We recommend users to examine the normalised result with different metrics, such as RSD (relative standard deviation), MAPE (mean absolute percentage error) and PCA (principal component analysis), especially when using advanced options of TIGER.
 
 \strong{Hyperparameters for target value computation}
 
@@ -123,7 +123,7 @@ For an objective metabolite to be corrected, the intersection of its top \emph{t
 
 \item \code{selectVar_batchWise}:
 
-Advanced option designed for special cases. Setting it \code{TRUE} might be useful when your data have strong batch effects.
+Advanced option designed for special cases. Setting it \code{TRUE} might be useful when your data have very obvious batch effects.
 }
 
 \strong{Hyperparameters for model construction}
