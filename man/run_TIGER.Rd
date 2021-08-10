@@ -44,7 +44,7 @@ Row: sample. Column: variable. See Examples.}
 
 \item{col_sampleID}{(required) a character string indicating the name of the column that specifies the sample ID of each sample. The values in this column will not affect the data correction process but can act as labels for different samples. See Examples.}
 
-\item{col_sampleType}{(required) a character string indicating the name of the column that specifies the type (such as QC1, QC2, subject) of each sample. This column of \code{train_samples} can be used to indicate different kinds of QC samples. QC samples of the \strong{same type} should have the \strong{same type name}. See Examples.}
+\item{col_sampleType}{(required) a character string indicating the name of the column that specifies the type (such as QC1, QC2, subject) of each sample. This column can be used to indicate different kinds of QC samples in \code{train_samples}. QC samples of the \strong{same type} should have the \strong{same type name}. See Examples.}
 
 \item{col_batchID}{(required) a character string indicating the name of the column that specifies the batch ID of each sample. See Examples.}
 
