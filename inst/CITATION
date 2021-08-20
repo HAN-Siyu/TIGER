@@ -1,4 +1,4 @@
-citHeader("To cite TIGER in publications, please use:")
+citHeader("To cite TIGER/TIGERr in publications, please use:")
 
 citEntry(entry="Article",
          title = "TIGER: technical variation elimination for metabolomics data using ensemble learning architecture",
@@ -15,4 +15,4 @@ citEntry(entry="Article",
          textVersion = ""
          )
 
-citFooter(sprintf("The authors would be glad to hear how TIGER is used in your study. You are kindly encouraged to notify %s about any work you publish!", meta$Maintainer))
+citFooter(sprintf("The authors would be glad to hear how TIGER/TIGERr is used in your study. You are kindly encouraged to notify %s about any work you publish!", meta$Maintainer))
