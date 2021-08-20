@@ -1,4 +1,4 @@
-Package: TIGER_R
+Package: TIGERr
 Type: Package
 Title: Technical Variation Elimination with Ensemble Learning Architecture
 Version: 0.1.0
@@ -6,6 +6,7 @@ Author: Siyu Han [aut, cre], Jialing Huang [aut], Francesco Foppiano [aut], Corn
 Maintainer: Siyu Han <siyu.han@helmholtz-muenchen.de>
 Acknowledgments: TAI Yun-hsiu, WANG Ruoyu, CHENG Ming, GUO Yuan, LI Han, FAN Linrui
 Description: 
+    TIGERr is the R implementation of TIGER. 
     TIGER integrates random forest algorithm into an innovative ensemble learning architecture. Benefiting from this advanced architecture, TIGER is resilient to outliers, free from model tuning and less likely to be affected by specific hyperparameters.
     TIGER supports targeted and untargeted metabolomics data and is competent to perform both intra- and inter-batch technical variation removal. TIGER can also be used for cross-kit adjustment to ensure data obtained from different analytical assays can be effectively combined and compared.
 License: GPL (>= 3)
