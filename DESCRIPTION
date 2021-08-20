@@ -1,6 +1,6 @@
-Package: TIGER
+Package: TIGER_R
 Type: Package
-Title: Technical variation elImination with ensemble learninG architEcture in R
+Title: Technical Variation Elimination with Ensemble Learning Architecture
 Version: 0.1.0
 Author: Siyu Han [aut, cre], Jialing Huang [aut], Francesco Foppiano [aut], Cornelia Prehn [aut], Jerzy Adamski [aut], Karsten Suhre [aut], Giuseppe Matullo [aut], Freimut Schliess [aut], Christian Gieger [aut], Annette Peters [aut], Rui Wang-Sattler [aut]
 Maintainer: Siyu Han <siyu.han@helmholtz-muenchen.de>
