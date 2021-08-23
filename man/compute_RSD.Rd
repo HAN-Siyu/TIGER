@@ -9,6 +9,9 @@ compute_RSD(input_data)
 \arguments{
 \item{input_data}{a numeric vector}
 }
+\value{
+The RSD of the values in \code{input_data} is computed, as a numeric of length one.
+}
 \description{
 This function computes the RSD (relative standard deviation) of the values in \code{input_data}. Missing values are removed before the computation automatically.
 }

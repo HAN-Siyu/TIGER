@@ -10,6 +10,8 @@
 #'
 #' \code{sd(input_data, na.rm = TRUE) / mean(input_data, na.rm = TRUE)}.
 #'
+#' @return The RSD of the values in \code{input_data} is computed, as a numeric of length one.
+#'
 #' @examples
 #' RSD_1 <- compute_RSD(c(1:10))
 #'
@@ -48,6 +50,11 @@ compute_RSD <- function(input_data) {
 #'
 #' @details See \code{\link{run_TIGER}}.
 #'
+#' @return
+#' If \code{targetVal_batchWise = FALSE}, the function returns a list of length one containing the target values computed on the whole dataset.
+#'
+#' If \code{targetVal_batchWise = TRUE}, a list containing the target values computed on different batches is returned. The length of the returned list equals the number of batch specified by \code{batchID}.
+#'
 #' @examples
 #' data(FF4_qc) # load demo dataset
 #' QC_num <- FF4_qc[-c(1:5)] # only contain numeric metabolite values.
@@ -79,9 +86,11 @@ compute_RSD <- function(input_data) {
 #'                               coerce_numeric = TRUE)
 #' identical(tarVal_2, tarVal_3)  # identical to tarVal_2
 #'
+#' \dontrun{
+#'
 #' # will throw errors if input data have non-numeric columns
 #' # and coerce_numeric = FALSE:
-#' \dontrun{
+#'
 #' tarVal_4 <- compute_targetVal(QC_num = FF4_qc,
 #'                               sampleType = FF4_qc$sampleType,
 #'                               batchID = FF4_qc$plateID,
@@ -166,6 +175,11 @@ compute_targetVal <- function(QC_num, sampleType, batchID,
 #'
 #' @details See \code{\link{run_TIGER}}.
 #'
+#' @return
+#' If \code{selectVar_batchWise = FALSE}, the function returns a list of length one containing the selected variables computed on the whole dataset.
+#'
+#' If \code{selectVar_batchWise = TRUE}, a list containing the selected variables computed on different batches is returned. The length of the returned list equals the number of batch specified by \code{test_batchID} and/or \code{train_batchID}.
+#'
 #' @examples
 #'
 #' data(FF4_qc) # load demo dataset
@@ -208,9 +222,11 @@ compute_targetVal <- function(QC_num, sampleType, batchID,
 #'                                   coerce_numeric = TRUE)
 #' identical(selected_var_3, selected_var_4)  # identical to selected_var_3
 #'
+#' \dontrun{
+#'
 #' # will throw errors if input data have non-numeric columns
 #' # and coerce_numeric = FALSE:
-#' \dontrun{
+#'
 #' selected_var_5 <- select_variable(train_num = train_samples[-c(4,5)],
 #'                                   coerce_numeric = FALSE)
 #' }
@@ -416,13 +432,13 @@ select_variable <- function(train_num, test_num = NULL,
 #' Advanced options to specify \code{mtry}, \code{nodesize} and other related arguments in \code{\link[randomForest]{randomForest}} for a customised ensemble learning architecture. See Examples.
 #' }
 #'
+#' @return This function returns a data.frame with the same data structure as the input \code{test_samples}, but the metabolite values are the normalised/corrected ones. \code{NA} and zeros in the original \code{test_samples} will not be changed or normalised.
+#'
 #' @section References:
-#' Han S. \emph{et al}. TIGER: technical variation elimination for metabolomics data using ensemble learning architecture. (\emph{Submitted})
+#' Han S. \emph{et al}. TIGER: Technical variation elimination for metabolomics data using ensemble learning architecture. (\emph{Submitted})
 #'
 #' @examples
-#'
-#' \dontrun{
-#'
+#' \donttest{
 #' data(FF4_qc) # load demo dataset
 #'
 #' # QC as training samples; QC1, QC2 and QC3 as test samples:
@@ -442,7 +458,7 @@ select_variable <- function(train_num, test_num = NULL,
 #'                          col_batchID = "plateID",        # input column name
 #'                          col_order = "injectionOrder",   # input column name
 #'                          col_position = "wellPosition",  # input column name
-#'                          parallel.cores = -1)            # use all CPU cores
+#'                          parallel.cores = 2)
 #'
 #' # If the information of injection order and well position is not available,
 #' # or you don't want to use them:
@@ -456,7 +472,7 @@ select_variable <- function(train_num, test_num = NULL,
 #'                          col_batchID = "plateID",
 #'                          col_order = NULL,                # set NULL
 #'                          col_position = NULL,             # set NULL
-#'                          parallel.cores = -1)
+#'                          parallel.cores = 2)
 #'
 #' # If use external target values and selected variables with
 #' # customised settings:
@@ -485,7 +501,7 @@ select_variable <- function(train_num, test_num = NULL,
 #'                          col_position = "wellPosition",
 #'                          targetVal_external = target_val,
 #'                          selectVar_external = select_var,
-#'                          parallel.cores = -1)
+#'                          parallel.cores = 2)
 #'
 #' # The definitions of other hyperparameters correspond to
 #' # randomForest::randomForest().

@@ -80,6 +80,9 @@ Row: sample. Column: variable. See Examples.}
 
 \item{parallel.cores}{an integer (== -1 or >= 1) specifying the number of cores for parallel computation. Setting \code{-1} to run with all cores. Default: \code{2}.}
 }
+\value{
+This function returns a data.frame with the same data structure as the input \code{test_samples}, but the metabolite values are the normalised/corrected ones. \code{NA} and zeros in the original \code{test_samples} will not be changed or normalised.
+}
 \description{
 Use TIGER algorithm to eliminate the technical variation in metabolomics data. TIGER supports targeted and untargeted metabolomics data and is competent to perform both intra- and inter-batch technical variation removal.
 }
@@ -136,13 +139,11 @@ Advanced options to specify \code{mtry}, \code{nodesize} and other related argum
 }
 \section{References}{
 
-Han S. \emph{et al}. TIGER: technical variation elimination for metabolomics data using ensemble learning architecture. (\emph{Submitted})
+Han S. \emph{et al}. TIGER: Technical variation elimination for metabolomics data using ensemble learning architecture. (\emph{Submitted})
 }
 
 \examples{
-
-\dontrun{
-
+\donttest{
 data(FF4_qc) # load demo dataset
 
 # QC as training samples; QC1, QC2 and QC3 as test samples:
@@ -162,7 +163,7 @@ test_norm_1 <- run_TIGER(test_samples = test_samples,
                          col_batchID = "plateID",        # input column name
                          col_order = "injectionOrder",   # input column name
                          col_position = "wellPosition",  # input column name
-                         parallel.cores = -1)            # use all CPU cores
+                         parallel.cores = 2)
 
 # If the information of injection order and well position is not available,
 # or you don't want to use them:
@@ -176,7 +177,7 @@ test_norm_2 <- run_TIGER(test_samples = test_data,
                          col_batchID = "plateID",
                          col_order = NULL,                # set NULL
                          col_position = NULL,             # set NULL
-                         parallel.cores = -1)
+                         parallel.cores = 2)
 
 # If use external target values and selected variables with
 # customised settings:
@@ -205,7 +206,7 @@ test_norm_3 <- run_TIGER(test_samples = test_samples,
                          col_position = "wellPosition",
                          targetVal_external = target_val,
                          selectVar_external = select_var,
-                         parallel.cores = -1)
+                         parallel.cores = 2)
 
 # The definitions of other hyperparameters correspond to
 # randomForest::randomForest().

@@ -29,6 +29,11 @@ compute_targetVal(
 
 \item{coerce_numeric}{logical. If \code{TRUE}, values in \code{QC_num} will be coerced to numeric before the computation. The columns cannot be coerced will be removed (with warnings). See Examples. Default: \code{FALSE}.}
 }
+\value{
+If \code{targetVal_batchWise = FALSE}, the function returns a list of length one containing the target values computed on the whole dataset.
+
+If \code{targetVal_batchWise = TRUE}, a list containing the target values computed on different batches is returned. The length of the returned list equals the number of batch specified by \code{batchID}.
+}
 \description{
 This function provides an advanced option to calculate the target values of one reference dataset (i.e. \code{QC_num}, numeric values of quality control samples). The generated target values (a list) can be further passed to argument \code{targetVal_external} in function \code{\link{run_TIGER}} such that TIGER can align the \code{test_samples} with the reference dataset. This is useful for longitudinal datasets correction and cross-kit adjustment. See case study section of our original paper for detailed explanation.
 }
@@ -66,9 +71,11 @@ tarVal_3 <- compute_targetVal(QC_num = FF4_qc[-c(4:5)],
                               coerce_numeric = TRUE)
 identical(tarVal_2, tarVal_3)  # identical to tarVal_2
 
+\dontrun{
+
 # will throw errors if input data have non-numeric columns
 # and coerce_numeric = FALSE:
-\dontrun{
+
 tarVal_4 <- compute_targetVal(QC_num = FF4_qc,
                               sampleType = FF4_qc$sampleType,
                               batchID = FF4_qc$plateID,

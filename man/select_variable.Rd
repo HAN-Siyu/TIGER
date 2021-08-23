@@ -38,6 +38,11 @@ select_variable(
 
 \item{coerce_numeric}{logical. If \code{TRUE}, values in \code{train_num} and  \code{test_num} will be coerced to numeric before the computation. The columns cannot be coerced will be removed (with warnings). See Examples. Default: \code{FALSE}.}
 }
+\value{
+If \code{selectVar_batchWise = FALSE}, the function returns a list of length one containing the selected variables computed on the whole dataset.
+
+If \code{selectVar_batchWise = TRUE}, a list containing the selected variables computed on different batches is returned. The length of the returned list equals the number of batch specified by \code{test_batchID} and/or \code{train_batchID}.
+}
 \description{
 This function provides an advanced option to select metabolite variables from external dataset(s). The selected variables (as a list) can be further passed to argument \code{selectVar_external} in function \code{\link{run_TIGER}} for a customised data correction.
 }
@@ -86,9 +91,11 @@ selected_var_4 <- select_variable(train_num = train_samples[-c(4,5)],
                                   coerce_numeric = TRUE)
 identical(selected_var_3, selected_var_4)  # identical to selected_var_3
 
+\dontrun{
+
 # will throw errors if input data have non-numeric columns
 # and coerce_numeric = FALSE:
-\dontrun{
+
 selected_var_5 <- select_variable(train_num = train_samples[-c(4,5)],
                                   coerce_numeric = FALSE)
 }
