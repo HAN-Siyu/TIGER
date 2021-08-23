@@ -9,7 +9,7 @@ Description:
     The R implementation of TIGER. 
     TIGER integrates random forest algorithm into an innovative ensemble learning architecture. Benefiting from this advanced architecture, TIGER is resilient to outliers, free from model tuning and less likely to be affected by specific hyperparameters.
     TIGER supports targeted and untargeted metabolomics data and is competent to perform both intra- and inter-batch technical variation removal. TIGER can also be used for cross-kit adjustment to ensure data obtained from different analytical assays can be effectively combined and compared.
-    Reference: Han S. et al. (2021) TIGER: technical variation elimination for metabolomics data using ensemble learning architecture (submitted)
+    Reference: Han S. et al. (2021) TIGER: technical variation elimination for metabolomics data using ensemble learning architecture (submitted).
 License: GPL (>= 3)
 Depends: R (>= 3.5.0)
 Imports:
