@@ -1,0 +1,9 @@
+^.*\.Rproj$
+^\.Rproj\.user$
+^\.gitignore$
+^\.git$
+^\.Rhistory$
+^\.DS_Store$
+^cran-comments\.md$
+.DS_Store
+^CRAN-RELEASE$
