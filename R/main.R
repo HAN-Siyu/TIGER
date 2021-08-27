@@ -447,7 +447,7 @@ select_variable <- function(train_num, test_num = NULL,
 #'
 #' # col_sampleID includes labels. You can assign names for different samples:
 #' train_samples$sampleID <- "train"
-#' test_samples$sampleID <- "test"
+#' test_samples$sampleID  <- "test"
 #'
 #' # Use default setting and
 #' # include injection order and well position into feature set:

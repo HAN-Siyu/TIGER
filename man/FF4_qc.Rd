@@ -17,7 +17,7 @@ This demo dataset, a data.frame with 232 samples (rows) and 108 variables (colum
 
 The columns include sample ID, sample type, plate ID, well position, injection order and the concentrations of 103 selected targeted metabolites. These QC samples are measured with the cohort samples of KORA FF4 (Cooperative Health Research in the Augsburg Region, the second follow-up study, 2013–2014) using the analytical assay Biocrates Absolute\emph{IDQ}\ifelse{html}{\out{<sup>®</sup>}}{®} p180 (BIOCRATES Life Sciences AG, Innsbruck, Austria).
 
-In our study, we used QC as training samples, and QC1, QC2, QC3 and cohort samples as test samples. The cohort data are operated by Helmholtz Zentrum München and available via KORA platform \url{https://www.helmholtz-muenchen.de/en/kora/index.html} upon reasonable request. See Reference for detailed information.
+In our paper, we used QC as training samples, while QC1, QC2, QC3 and cohort samples were used as test samples. The cohort data are operated by Helmholtz Zentrum München and available via KORA platform \url{https://www.helmholtz-muenchen.de/en/kora/index.html} upon reasonable request. See Reference for detailed information.
 }
 \section{Reference}{
 
