@@ -7,7 +7,7 @@
 compute_targetVal(
   QC_num,
   sampleType,
-  batchID,
+  batchID = NULL,
   targetVal_method = c("mean", "median"),
   targetVal_batchWise = FALSE,
   targetVal_removeOutlier = !targetVal_batchWise,
@@ -19,7 +19,7 @@ compute_targetVal(
 
 \item{sampleType}{a vector corresponding to \code{QC_num} to specify the type of each QC sample. QC samples of the \strong{same type} should have the \strong{same type name}. See Examples.}
 
-\item{batchID}{a vector corresponding to \code{QC_num} to specify the batch of each sample. See Examples.}
+\item{batchID}{a vector corresponding to \code{QC_num} to specify the batch of each sample. Ignored if \code{targetVal_batchWise = FALSE}. See Examples.}
 
 \item{targetVal_method}{a character string specifying how the target values are computed. Can be \code{"mean"} (default) or \code{"median"}. See Details.}
 

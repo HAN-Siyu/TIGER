@@ -1,3 +1,47 @@
+Internal.createFolds <- function (y, k = 10, list = TRUE, returnTrain = FALSE) {
+    # borrowed from caret::createFolds()
+    # package caret has been cited in our original paper
+    if (is.numeric(y)) {
+        cuts <- floor(length(y)/k)
+        if (cuts < 2)
+            cuts <- 2
+        if (cuts > 5)
+            cuts <- 5
+        breaks <- unique(quantile(y, probs = seq(0, 1, length = cuts)))
+        y <- cut(y, breaks, include.lowest = TRUE)
+    }
+    if (k < length(y)) {
+        y <- factor(as.character(y))
+        numInClass <- table(y)
+        foldVector <- vector(mode = "integer", length(y))
+        for (i in 1:length(numInClass)) {
+            min_reps <- numInClass[i]%/%k
+            if (min_reps > 0) {
+                spares <- numInClass[i]%%k
+                seqVector <- rep(1:k, min_reps)
+                if (spares > 0)
+                    seqVector <- c(seqVector, sample(1:k, spares))
+                foldVector[which(y == names(numInClass)[i])] <- sample(seqVector)
+            }
+            else {
+                foldVector[which(y == names(numInClass)[i])] <- sample(1:k,
+                                                                       size = numInClass[i])
+            }
+        }
+    }
+    else foldVector <- seq(along = y)
+    if (list) {
+        out <- split(seq(along = y), foldVector)
+        names(out) <- paste("Fold", gsub(" ", "0",
+                                         format(seq(along = out))), sep = "")
+        if (returnTrain)
+            out <- lapply(out, function(data, y) y[-data], y = seq(along = y))
+    }
+    else out <- foldVector
+    out
+}
+
+
 Internal.boxplot.stats <- function(x, # borrowed from grDevices::boxplot.stats()
                                    coef = 1.5, do.conf = TRUE, do.out = TRUE) {
     if (coef < 0)
@@ -240,7 +284,7 @@ Internal.run_ensemble <- function(trainSet, testSet,
     pred_ensemble <- lapply(1:nrow(rf_hyperparams), function(idx) {
         current_hyperparams <- as.list(rf_hyperparams[idx,])
 
-        folds_train <- caret::createFolds(1:length(trainSet$y), k = 5, returnTrain = TRUE)
+        folds_train <- Internal.createFolds(1:length(trainSet$y), k = 5, returnTrain = TRUE)
 
         res_folds <- lapply(folds_train, function(train_idx, rf_params) {
 
