@@ -17,7 +17,7 @@ Imports:
     pbapply (>= 1.4-3),
     ppcor (>= 1.1),
     randomForest (>= 4.6-14),
-    stats (>= 4.0.3)
+    stats (>= 3.0.0)
 BugReports: https://github.com/HAN-Siyu/TIGER/issues
 Encoding: UTF-8
 LazyData: true
