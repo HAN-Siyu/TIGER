@@ -377,6 +377,7 @@ select_variable <- function(train_num, test_num = NULL,
 #' @importFrom stats fivenum
 #' @importFrom stats median
 #' @importFrom stats predict
+#' @importFrom stats quantile
 #' @importFrom stats rnorm
 #' @importFrom stats sd
 #'
