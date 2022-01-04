@@ -137,9 +137,9 @@ Advanced option designed for special cases. Setting it \code{TRUE} might be usef
 Advanced options to specify \code{mtry}, \code{nodesize} and other related arguments in \code{\link[randomForest]{randomForest}} for a customised ensemble learning architecture. See Examples.
 }
 }
-\section{References}{
+\section{Reference}{
 
-Han S. \emph{et al}. TIGER: Technical variation elimination for metabolomics data using ensemble learning architecture. (\emph{Submitted})
+Han S. \emph{et al}. TIGER: technical variation elimination for metabolomics data using ensemble learning architecture. \emph{Briefings in Bioinformatics} (2022) bbab535. \url{https://doi.org/10.1093/bib/bbab535}.
 }
 
 \examples{
