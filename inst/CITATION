@@ -2,7 +2,7 @@ citHeader("To cite TIGER/TIGERr in publications, please use:")
 
 citEntry(entry="Article",
          title = "TIGER: technical variation elimination for metabolomics data using ensemble learning architecture",
-         author = personList(as.person("Siyu Han"), as.person("Jialing Huang"), as.person("Francesco Foppiano"), as.person("Cornelia Prehn"), as.person("Jerzy Adamski"), as.person("Karsten Suhre"), as.person("Giuseppe Matullo"), as.person("Freimut Schliess"), as.person("Christian Gieger"), as.person("Annette Peters"), as.person("Rui Wang-Sattler")),
+         author = personList(as.person("Siyu Han"), as.person("Jialing Huang"), as.person("Francesco Foppiano"), as.person("Cornelia Prehn"), as.person("Jerzy Adamski"), as.person("Karsten Suhre"), as.person("Ying Li"), as.person("Giuseppe Matullo"), as.person("Freimut Schliess"), as.person("Christian Gieger"), as.person("Annette Peters"), as.person("Rui Wang-Sattler")),
          year = "2022",
          journal = "Briefings in Bioinformatics",
          issue = "",
