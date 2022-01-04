@@ -245,12 +245,6 @@ select_variable <- function(train_num, test_num = NULL,
     selectVar_corType   <- match.arg(selectVar_corType)
     selectVar_corMethod <- match.arg(selectVar_corMethod)
 
-    selectVar_minNum <- ifelse(is.null(selectVar_minNum), 1, selectVar_minNum)
-    selectVar_maxNum <- ifelse(is.null(selectVar_maxNum), (ncol(train_num) - 1), selectVar_maxNum)
-
-    selectVar_minNum <- max(as.integer(selectVar_minNum), 1)
-    selectVar_maxNum <- min(as.integer(selectVar_maxNum), ncol(train_num) - 1)
-
     if(coerce_numeric) {
         train_num <- as.data.frame(sapply(train_num, as.numeric))
         idx_NA <- sapply(train_num, function(x) {
@@ -281,6 +275,15 @@ select_variable <- function(train_num, test_num = NULL,
         if (!all(names(test_num) %in% names(train_num))) stop("  Variables in training and test data cannot match!")
         train_num <- train_num[names(test_num)]
     }
+
+    selectVar_minNum <- ifelse(is.null(selectVar_minNum), 1, selectVar_minNum)
+    selectVar_maxNum <- ifelse(is.null(selectVar_maxNum), (ncol(train_num) - 1), selectVar_maxNum)
+
+    selectVar_minNum <- max(as.integer(selectVar_minNum), 1)
+    selectVar_maxNum <- max(as.integer(selectVar_maxNum), 1)
+
+    selectVar_maxNum <- min(selectVar_maxNum, ncol(train_num) - 1)
+    selectVar_minNum <- min(selectVar_minNum, selectVar_maxNum)
 
     if (selectVar_batchWise) {
         train_num_list    <- split(train_num, f = train_batchID)
@@ -434,8 +437,8 @@ select_variable <- function(train_num, test_num = NULL,
 #'
 #' @return This function returns a data.frame with the same data structure as the input \code{test_samples}, but the metabolite values are the normalised/corrected ones. \code{NA} and zeros in the original \code{test_samples} will not be changed or normalised.
 #'
-#' @section References:
-#' Han S. \emph{et al}. TIGER: Technical variation elimination for metabolomics data using ensemble learning architecture. (\emph{Submitted})
+#' @section Reference:
+#' Han S. \emph{et al}. TIGER: technical variation elimination for metabolomics data using ensemble learning architecture. \emph{Briefings in Bioinformatics} (2022) bbab535. \url{https://doi.org/10.1093/bib/bbab535}.
 #'
 #' @examples
 #' \donttest{

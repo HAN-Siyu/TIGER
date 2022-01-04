@@ -1,7 +1,8 @@
-# TIGERr 0.1.1
+# TIGERr 1.0.0 (04-Jan-2022)
 
-* Fixed the dependency issue caused by package "lubridate"
+* Updated reference information.
+* Fixed the issues caused by dependencies.
 
-# TIGERr 0.1.0
+# TIGERr 0.1.0 (02-Sep-2021)
 
 * Original release

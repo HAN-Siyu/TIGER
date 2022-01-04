@@ -194,31 +194,38 @@ Internal.select_variable <- function(cor_info, selectVar_minNum = NULL,
                         break
                     }
                 }
+
+                if (length(selected_var_name) > selectVar_maxNum) {
+                    selected_var_name <- selected_var_name[1:selectVar_maxNum]
+                }
+
             }
 
         } else if (length(candidate_var_name) > selectVar_maxNum) {
 
-            if (is.null(test_cor)) {
-                selected_var_name <- correlated_train_name[1:selectVar_maxNum]
-            } else {
-                upper_limit <- selectVar_maxNum
+            selected_var_name <- candidate_var_name[1:selectVar_maxNum]
 
-                while (1) {
-                    candidate_test_name_tmp  <- correlated_test_name[1:upper_limit]
-                    candidate_train_name_tmp <- correlated_train_name[1:upper_limit]
-                    candidate_var_name_tmp <- intersect(candidate_train_name_tmp, candidate_test_name_tmp)
-
-                    if (length(candidate_var_name_tmp) < selectVar_maxNum) {
-                        upper_limit <- upper_limit + 1
-                        selected_var_name <- candidate_var_name_tmp
-                    } else if (length(candidate_var_name_tmp) == selectVar_maxNum) {
-                        selected_var_name <- candidate_var_name_tmp
-                        break
-                    } else {
-                        break
-                    }
-                }
-            }
+            # if (is.null(test_cor)) {
+            #     selected_var_name <- correlated_train_name[1:selectVar_maxNum]
+            # } else {
+            #     upper_limit <- selectVar_maxNum
+            #
+            #     while (1) {
+            #         candidate_test_name_tmp  <- correlated_test_name[1:upper_limit]
+            #         candidate_train_name_tmp <- correlated_train_name[1:upper_limit]
+            #         candidate_var_name_tmp <- intersect(candidate_train_name_tmp, candidate_test_name_tmp)
+            #
+            #         if (length(candidate_var_name_tmp) < selectVar_maxNum) {
+            #             upper_limit <- upper_limit + 1
+            #             selected_var_name <- candidate_var_name_tmp
+            #         } else if (length(candidate_var_name_tmp) == selectVar_maxNum) {
+            #             selected_var_name <- candidate_var_name_tmp
+            #             break
+            #         } else {
+            #             break
+            #         }
+            #     }
+            # }
 
         } else {
             selected_var_name <- candidate_var_name

@@ -15,6 +15,6 @@
 #' @name FF4_qc
 #' @usage data(FF4_qc)
 #' @section Reference:
-#' Han S. \emph{et al}. TIGER: technical variation elimination for metabolomics data using ensemble learning architecture. (\emph{Submitted})
+#' Han S. \emph{et al}. TIGER: technical variation elimination for metabolomics data using ensemble learning architecture. \emph{Briefings in Bioinformatics} (2022) bbab535. \url{https://doi.org/10.1093/bib/bbab535}.
 NULL
 
