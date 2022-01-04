@@ -10,7 +10,8 @@ citEntry(entry="Article",
          number = "bbab535",
          pages = "1-16",
          doi = "10.1093/bib/bbab535",
-         eprint = "https://academic.oup.com/bib/advance-article-abstract/doi/10.1093/bib/bbab535/6492643"
+         eprint = "https://academic.oup.com/bib/advance-article-abstract/doi/10.1093/bib/bbab535/6492643",
+         textVersion = "Siyu Han, Jialing Huang, Francesco Foppiano, Cornelia Prehn, Jerzy Adamski, Karsten Suhre, Ying Li, Giuseppe Matullo, Freimut Schliess, Christian Gieger, Annette Peters, Rui Wang-Sattler. TIGER: technical variation elimination for metabolomics data using ensemble learning architecture. Briefings in Bioinformatics, 2022, bbab535, doi:10.1093/bib/bbab535."
          )
 
 citFooter(sprintf("The authors would be glad to hear how TIGER/TIGERr is used in your study. You are kindly encouraged to notify %s about any work you publish!", meta$Maintainer))
