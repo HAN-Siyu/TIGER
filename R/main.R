@@ -438,7 +438,7 @@ select_variable <- function(train_num, test_num = NULL,
 #' @return This function returns a data.frame with the same data structure as the input \code{test_samples}, but the metabolite values are the normalised/corrected ones. \code{NA} and zeros in the original \code{test_samples} will not be changed or normalised.
 #'
 #' @section Reference:
-#' Han S. \emph{et al}. TIGER: technical variation elimination for metabolomics data using ensemble learning architecture. \emph{Briefings in Bioinformatics} (2022) bbab535. \url{https://doi.org/10.1093/bib/bbab535}.
+#' Han S. \emph{et al}. TIGER: technical variation elimination for metabolomics data using ensemble learning architecture. \emph{Briefings in Bioinformatics} (2022) bbab535. \doi{10.1093/bib/bbab535}.
 #'
 #' @examples
 #' \donttest{
