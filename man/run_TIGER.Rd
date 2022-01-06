@@ -139,7 +139,7 @@ Advanced options to specify \code{mtry}, \code{nodesize} and other related argum
 }
 \section{Reference}{
 
-Han S. \emph{et al}. TIGER: technical variation elimination for metabolomics data using ensemble learning architecture. \emph{Briefings in Bioinformatics} (2022) bbab535. \url{https://doi.org/10.1093/bib/bbab535}.
+Han S. \emph{et al}. TIGER: technical variation elimination for metabolomics data using ensemble learning architecture. \emph{Briefings in Bioinformatics} (2022) bbab535. \doi{10.1093/bib/bbab535}.
 }
 
 \examples{
