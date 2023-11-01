@@ -3,7 +3,7 @@
 
 **T**echnical variation el**I**mination for metabolomics data using ensemble learnin**G** archit**E**ctu**R**e
 
-***Thank you for checking our TIGER!***
+***Thank you for checking our TIGER @Big Cat Zoo!***
 
 ***Any questions regarding TIGER please drop an email to the zookeeper Siyu Han (siyu.han@tum.de) or post it to [issues](https://github.com/HAN-Siyu/TIGER/issues).***
 
