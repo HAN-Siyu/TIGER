@@ -25,7 +25,6 @@ https://han-siyu.github.io/TIGER_web/
 ### Reference:
 TIGER: technical variation elimination for metabolomics data using ensemble learning architecture. Briefings in bioinformatics 23.2 (2022): bbab535. (doi: https://doi.org/10.1093/bib/bbab535)
 
-
 ### Our Big Cat Zoo：
 
 - [TIGER](this work): technical variation elimination for metabolomics data using ensemble learning architecture
