@@ -105,7 +105,8 @@ Internal.remove_NA <- function(input_data_num, data_label = NULL,
 
 Internal.compute_cor <- function(train_num, test_num = NULL,
                                  selectVar_corType   = c("pcor", "cor"),
-                                 selectVar_corMethod = c("spearman", "pearson")) {
+                                 selectVar_corMethod = c("spearman", "pearson"),
+                                 selectVar_corUse = "complete.obs") {
 
     if (selectVar_corType == "pcor") {
         train_num_noNA <- Internal.remove_NA(train_num, data_label = "training data")
@@ -125,10 +126,10 @@ Internal.compute_cor <- function(train_num, test_num = NULL,
 
     } else {
 
-        train_cor <- data.frame(cor(train_num, method = selectVar_corMethod, use = "complete.obs"))
+        train_cor <- data.frame(cor(train_num, method = selectVar_corMethod, use = selectVar_corUse))
 
         if (!is.null(test_num)) {
-            test_cor <- data.frame(cor(test_num, method = selectVar_corMethod, use = "complete.obs"))
+            test_cor <- data.frame(cor(test_num, method = selectVar_corMethod, use = selectVar_corUse))
         } else test_cor <- NULL
     }
 

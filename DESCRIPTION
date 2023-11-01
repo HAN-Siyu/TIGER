@@ -1,7 +1,7 @@
 Package: TIGERr
 Type: Package
 Title: Technical Variation Elimination with Ensemble Learning Architecture
-Version: 1.0.0
+Version: 1.0.1
 Author: Siyu Han [aut, cre], Jialing Huang [aut], Francesco Foppiano [aut], Cornelia Prehn [aut], Jerzy Adamski [aut], Karsten Suhre [aut], Ying Li [aut], Giuseppe Matullo [aut], Freimut Schliess [aut], Christian Gieger [aut], Annette Peters [aut], Rui Wang-Sattler [aut]
 Maintainer: Siyu Han <siyu.han@helmholtz-muenchen.de>
 Acknowledgments: TAI Yun-hsiu, WANG Ruoyu, CHENG Ming, GUO Yuan, LI Han, FAN Linrui
@@ -21,4 +21,4 @@ Imports:
 BugReports: https://github.com/HAN-Siyu/TIGER/issues
 Encoding: UTF-8
 LazyData: true
-RoxygenNote: 7.1.1
+RoxygenNote: 7.2.1
