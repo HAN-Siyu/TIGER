@@ -24,8 +24,8 @@ devtools::install_github("HAN-Siyu/TIGER")
 **Stable version**
 
 ```
-# Enter the following command in R:
 # CRAN: https://CRAN.R-project.org/package=TIGERr
+# Enter the following command in R:
 
 install.packages("TIGERr")
 ```
