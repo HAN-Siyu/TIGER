@@ -246,8 +246,8 @@ select_variable <- function(train_num, test_num = NULL,
 
     selectVar_corType   <- match.arg(selectVar_corType)
     selectVar_corMethod <- match.arg(selectVar_corMethod)
-    selectVar_corUse <- match.arg(selectVar_corMethod, choices = c("complete.obs", "everything", "all.obs",
-                                                                   "na.or.complete", "pairwise.complete.obs"))
+    selectVar_corUse <- match.arg(selectVar_corUse, choices = c("complete.obs", "everything", "all.obs",
+                                                                "na.or.complete", "pairwise.complete.obs"))
 
     if(coerce_numeric) {
         train_num <- as.data.frame(sapply(train_num, as.numeric))
