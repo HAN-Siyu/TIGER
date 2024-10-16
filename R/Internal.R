@@ -127,9 +127,11 @@ Internal.compute_cor <- function(train_num, test_num = NULL,
     } else {
 
         train_cor <- data.frame(cor(train_num, method = selectVar_corMethod, use = selectVar_corUse))
+        if(anyNA(train_cor)) message("  Training data contain NA, which may affect correlation score.")
 
         if (!is.null(test_num)) {
             test_cor <- data.frame(cor(test_num, method = selectVar_corMethod, use = selectVar_corUse))
+            if(anyNA(test_cor)) message("  Test data contain NA, which may affect correlation score.")
         } else test_cor <- NULL
     }
 
@@ -146,7 +148,7 @@ Internal.select_variable <- function(cor_info, selectVar_minNum = NULL,
     test_cor  <- cor_info$test_cor
 
     train_cor[is.na(train_cor)] <- 0
-    if (!is.null(test_cor)) test_cor[is.na(test_cor)] <- 0
+    if (!is.null(test_cor))
 
     pb <- pbapply::timerProgressBar(min = 0, max = length(variable_name),
                                     initial = 0, style = 3, width = 70,
