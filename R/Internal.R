@@ -106,7 +106,7 @@ Internal.remove_NA <- function(input_data_num, data_label = NULL,
 Internal.compute_cor <- function(train_num, test_num = NULL,
                                  selectVar_corType   = c("pcor", "cor"),
                                  selectVar_corMethod = c("spearman", "pearson"),
-                                 selectVar_corUse = "complete.obs") {
+                                 selectVar_corUse = "pairwise.complete.obs") {
 
     if (selectVar_corType == "pcor") {
         train_num_noNA <- Internal.remove_NA(train_num, data_label = "training data")
@@ -125,13 +125,14 @@ Internal.compute_cor <- function(train_num, test_num = NULL,
         } else test_cor <- NULL
 
     } else {
-
+        message("    - processing training data (", selectVar_corMethod, " with ", selectVar_corUse, ")...")
         train_cor <- data.frame(cor(train_num, method = selectVar_corMethod, use = selectVar_corUse))
-        if(anyNA(train_cor)) message("  Training data contain NA, which may affect correlation score.")
+        if(anyNA(train_cor)) message("      Training data contain NA, which may affect correlation score.")
 
         if (!is.null(test_num)) {
+            message("    - processing test data (", selectVar_corMethod, " with ", selectVar_corUse, ")...")
             test_cor <- data.frame(cor(test_num, method = selectVar_corMethod, use = selectVar_corUse))
-            if(anyNA(test_cor)) message("  Test data contain NA, which may affect correlation score.")
+            if(anyNA(test_cor)) message("      Test data contain NA, which may affect correlation score.")
         } else test_cor <- NULL
     }
 
@@ -148,7 +149,7 @@ Internal.select_variable <- function(cor_info, selectVar_minNum = NULL,
     test_cor  <- cor_info$test_cor
 
     train_cor[is.na(train_cor)] <- 0
-    if (!is.null(test_cor))
+    if (!is.null(test_cor)) test_cor[is.na(test_cor)] <- 0
 
     pb <- pbapply::timerProgressBar(min = 0, max = length(variable_name),
                                     initial = 0, style = 3, width = 70,

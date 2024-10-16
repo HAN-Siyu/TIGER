@@ -19,7 +19,7 @@ run_TIGER(
   selectVar_external = NULL,
   selectVar_corType = c("cor", "pcor"),
   selectVar_corMethod = c("pearson", "spearman"),
-  selectVar_corUse = "complete.obs",
+  selectVar_corUse = "pairwise.complete.obs",
   selectVar_minNum = 5,
   selectVar_maxNum = 10,
   selectVar_batchWise = FALSE,
@@ -67,7 +67,7 @@ Row: sample. Column: variable. See Examples.}
 
 \item{selectVar_corMethod}{a character string indicating which correlation coefficient is to be computed. One of \code{"spearman"} (default) or \code{"pearson"}. Can be abbreviated. Ignored if a list of selected variables has been assigned to \code{selectVar_external}.}
 
-\item{selectVar_corUse}{Indicate how to deal with missing values when computing correlation (\code{selectVar_corType = "cor"}). The value will be passed to the parameter \code{use} from \code{\link[stats]{cor}}. Support values: \code{"complete.obs"} (default), \code{"everything"}, \code{"all.obs"}, \code{"na.or.complete"}, or \code{"pairwise.complete.obs"}. See \code{\link[stats]{cor}} for details.}
+\item{selectVar_corUse}{Indicate how to deal with missing values when computing correlation (\code{selectVar_corType = "cor"}). The value will be passed to the parameter \code{use} from \code{\link[stats]{cor}}. Support values: \code{"pairwise.complete.obs"} (default), \code{"everything"}, \code{"all.obs"}, \code{"na.or.complete"}, or \code{"complete.obs"}. See \code{\link[stats]{cor}} for details.}
 
 \item{selectVar_minNum}{an integer specifying the minimum number of the selected metabolite variables (injection order and well position are not regarded as metabolite variables). If \code{NULL}, no limited, but 1 at least. Default: \code{5}. Ignored if a list of selected variables has been assigned to \code{selectVar_external}.}
 
