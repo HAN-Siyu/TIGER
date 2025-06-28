@@ -335,6 +335,8 @@ Internal.run_ensemble <- function(trainSet, testSet,
     mod_weights_norm <- mod_weights / sum(mod_weights, na.rm = TRUE)
 
     pred_test <- sapply(pred_ensemble, function(x) x$pred_test_convert)
+    if (class(pred_test)[1] == "numeric") pred_test <- matrix(pred_test, ncol = length(pred_ensemble))
+                        
     pred_norm <- apply(pred_test, 1, function(x) sum(x * mod_weights_norm, na.rm = TRUE))
 
     if (return_base_res) {
