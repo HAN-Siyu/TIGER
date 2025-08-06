@@ -1,6 +1,7 @@
 Internal.createFolds <- function (y, k = 10, list = TRUE, returnTrain = FALSE) {
     # borrowed from caret::createFolds()
     # package caret has been cited in our original paper
+    
     if (is.numeric(y)) {
         cuts <- floor(length(y)/k)
         if (cuts < 2)
@@ -142,15 +143,12 @@ Internal.compute_cor <- function(train_num, test_num = NULL,
 
 Internal.select_variable <- function(cor_info, selectVar_minNum = NULL,
                                      selectVar_maxNum = NULL) {
-
+    
     variable_name <- cor_info$variable_name
-
+    
     train_cor <- cor_info$train_cor
     test_cor  <- cor_info$test_cor
-
-    train_cor[is.na(train_cor)] <- 0
-    if (!is.null(test_cor)) test_cor[is.na(test_cor)] <- 0
-
+    
     pb <- pbapply::timerProgressBar(min = 0, max = length(variable_name),
                                     initial = 0, style = 3, width = 70,
                                     min_time = 20)
@@ -159,88 +157,159 @@ Internal.select_variable <- function(cor_info, selectVar_minNum = NULL,
                                                              train_cor, test_cor,
                                                              selectVar_minNum, selectVar_maxNum) {
         pbapply::setTimerProgressBar(pb, var_idx)
-
+        
         input_one_variable_name <- variable_name[[var_idx]]
         correlated_train <- abs(train_cor[input_one_variable_name])
         correlated_train <- correlated_train[!row.names(correlated_train) %in% input_one_variable_name,,drop = FALSE]
+        correlated_train <- correlated_train[!is.na(correlated_train),, drop = F]
+        
         correlated_train <- correlated_train[order(correlated_train[[1]], decreasing = TRUE),,drop = FALSE]
-
+        
         correlated_train_name <- row.names(correlated_train)
         candidate_train_name  <- correlated_train_name[correlated_train[[1]] > 0.5]
-        candidate_var_name    <- candidate_train_name
-
+        
         if (!is.null(test_cor)) {
             correlated_test <- abs(test_cor[input_one_variable_name])
             correlated_test <- correlated_test[!row.names(correlated_test) %in% input_one_variable_name,,drop = FALSE]
+            correlated_test <- correlated_test[!is.na(correlated_test),, drop = F]
+            
             correlated_test <- correlated_test[order(correlated_test[[1]], decreasing = TRUE),,drop = FALSE]
-
+            
             correlated_test_name <- row.names(correlated_test)
             candidate_test_name  <- correlated_test_name[correlated_test[[1]] > 0.5]
-            candidate_var_name   <- intersect(candidate_var_name, candidate_test_name)
-        }
-
-        if (length(candidate_var_name) < selectVar_minNum) {
-
-            if (is.null(test_cor)) {
-                selected_var_name <- correlated_train_name[1:selectVar_minNum]
-            } else {
-                current_upper_limit <- min(length(candidate_train_name), length(candidate_test_name))
-                current_upper_limit <- max(current_upper_limit, selectVar_minNum)
-
-                while (1) {
-                    candidate_test_name_tmp  <- correlated_test_name[1:current_upper_limit]
-                    candidate_train_name_tmp <- correlated_train_name[1:current_upper_limit]
-                    candidate_var_name_tmp <- intersect(candidate_train_name_tmp, candidate_test_name_tmp)
-                    if (length(candidate_var_name_tmp) < selectVar_minNum) {
-                        current_upper_limit <- current_upper_limit + 1
-                    } else {
-                        selected_var_name <- candidate_var_name_tmp
-                        break
-                    }
-                }
-
-                if (length(selected_var_name) > selectVar_maxNum) {
-                    selected_var_name <- selected_var_name[1:selectVar_maxNum]
-                }
-
-            }
-
-        } else if (length(candidate_var_name) > selectVar_maxNum) {
-
-            selected_var_name <- candidate_var_name[1:selectVar_maxNum]
-
-            # if (is.null(test_cor)) {
-            #     selected_var_name <- correlated_train_name[1:selectVar_maxNum]
-            # } else {
-            #     upper_limit <- selectVar_maxNum
-            #
-            #     while (1) {
-            #         candidate_test_name_tmp  <- correlated_test_name[1:upper_limit]
-            #         candidate_train_name_tmp <- correlated_train_name[1:upper_limit]
-            #         candidate_var_name_tmp <- intersect(candidate_train_name_tmp, candidate_test_name_tmp)
-            #
-            #         if (length(candidate_var_name_tmp) < selectVar_maxNum) {
-            #             upper_limit <- upper_limit + 1
-            #             selected_var_name <- candidate_var_name_tmp
-            #         } else if (length(candidate_var_name_tmp) == selectVar_maxNum) {
-            #             selected_var_name <- candidate_var_name_tmp
-            #             break
-            #         } else {
-            #             break
-            #         }
-            #     }
-            # }
-
         } else {
-            selected_var_name <- candidate_var_name
+            candidate_test_name <- correlated_test_name <- NULL
         }
-        selected_var_name
+        
+        if (sum(train_cor) + sum(test_cor) == 0) {
+            stop("Insufficient observations to calculate the correlation for variable: ", input_one_variable_name)
+        }
+        
+        if (is.null(correlated_train_name)) {
+            correlated_train_name <- correlated_test_name
+            candidate_train_name <- candidate_test_name
+        }
+        
+        if (is.null(correlated_test_name)) {
+            correlated_test_name <- correlated_train_name
+            candidate_test_name <- candidate_train_name
+        } 
+        
+        candidate_var_name <- intersect(candidate_test_name, candidate_train_name)
+        
+        if (length(candidate_var_name) < selectVar_minNum) {
+            
+            current_upper_limit <- min(length(candidate_train_name), length(candidate_test_name))
+            current_upper_limit <- max(current_upper_limit, selectVar_minNum)
+            
+            while (1) {
+                candidate_test_name_tmp  <- correlated_test_name[1:current_upper_limit]
+                candidate_train_name_tmp <- correlated_train_name[1:current_upper_limit]
+                candidate_var_name_tmp <- intersect(candidate_train_name_tmp, candidate_test_name_tmp)
+                if (length(candidate_var_name_tmp) < selectVar_minNum) {
+                    current_upper_limit <- current_upper_limit + 1
+                } else {
+                    selected_var_name <- candidate_var_name_tmp
+                    break
+                }
+            }
+            candidate_var_name <- selected_var_name
+        } 
+        
+        if (length(candidate_var_name) > selectVar_maxNum) {
+            candidate_var_name <- candidate_var_name[1:selectVar_maxNum]
+        }
+        candidate_var_name
     },
     variable_name = variable_name,
     train_cor = train_cor, test_cor = test_cor,
     selectVar_minNum = selectVar_minNum, selectVar_maxNum = selectVar_maxNum)
     pbapply::closepb(pb)
     names(selected_var) <- variable_name
+    selected_var
+}
+
+Internal.select_variable_cor <- function(train_num, test_num = NULL,
+                                         selectVar_corMethod = c("pearson", "spearman"),
+                                         selectVar_corUse = "pairwise.complete.obs",
+                                         selectVar_minNum = NULL,
+                                         selectVar_maxNum = NULL, cl = NULL) {
+    
+    all_varNum = ncol(train_num)
+    
+    pbapply::pboptions(type = "timer", style = 3, char = "=", txt.width = 70)
+    selected_var <- pbapply::pblapply(1:all_varNum, function(var_idx, train_num, test_num, all_varNum,
+                                                             selectVar_corMethod,
+                                                             selectVar_corUse,
+                                                             selectVar_minNum, selectVar_maxNum) {
+        train_cor <- abs(cor(x = train_num[var_idx], y = train_num[-var_idx],
+                             method = selectVar_corMethod, use = selectVar_corUse))
+        train_cor <- train_cor[,!is.na(train_cor), drop = F]
+        
+        train_cor <- train_cor[,order(train_cor, decreasing = TRUE), drop = F]
+        candidate_train_name <- colnames(train_cor)
+        candidate_var_name_train <- names(train_cor[,train_cor > 0.5])
+        
+        if (!is.null(test_num)) {
+            test_cor <- abs(cor(x = test_num[var_idx], y = test_num[-var_idx],
+                                method = selectVar_corMethod, use = selectVar_corUse))
+            test_cor <- test_cor[,!is.na(test_cor), drop = F]
+            
+            test_cor <- test_cor[,order(test_cor, decreasing = TRUE), drop = F]
+            candidate_test_name <- colnames(test_cor)
+            candidate_var_name_test <- names(test_cor[,test_cor > 0.5])
+        } else {
+            test_cor <- NULL
+            candidate_test_name <- NULL
+            candidate_var_name_test <- NULL
+        }
+        
+        if (length(train_cor) + length(test_cor) == 0) {
+            stop("Insufficient observations to calculate the correlation for variable: ", rownames(train_cor))
+        }
+        
+        if (is.null(candidate_train_name)) {
+            candidate_train_name <- candidate_test_name
+            candidate_var_name_train <- candidate_var_name_test
+        }
+        
+        if (is.null(candidate_test_name)) {
+            candidate_test_name <- candidate_train_name
+            candidate_var_name_test <- candidate_var_name_train
+        } 
+        
+        candidate_var_name <- intersect(candidate_var_name_train, candidate_var_name_test)
+        
+        if (length(candidate_var_name) < selectVar_minNum) {
+            
+            current_upper_limit <- min(length(candidate_var_name_train), length(candidate_var_name_test))
+            current_upper_limit <- max(current_upper_limit, selectVar_minNum)
+            
+            while (1) {
+                candidate_test_name_tmp  <- candidate_test_name[1:current_upper_limit]
+                candidate_train_name_tmp <- candidate_train_name[1:current_upper_limit]
+                candidate_var_name_tmp <- intersect(candidate_train_name_tmp, candidate_test_name_tmp)
+                if (length(candidate_var_name_tmp) < selectVar_minNum) {
+                    current_upper_limit <- current_upper_limit + 1
+                } else {
+                    selected_var_name <- candidate_var_name_tmp
+                    break
+                }
+            }
+            candidate_var_name <- selected_var_name
+        } 
+        
+        if (length(candidate_var_name) > selectVar_maxNum) {
+            candidate_var_name <- candidate_var_name[1:selectVar_maxNum]
+        } 
+        
+        candidate_var_name
+    },
+    train_num = train_num, test_num = test_num, all_varNum = all_varNum,
+    selectVar_corMethod = selectVar_corMethod, selectVar_corUse = selectVar_corUse,
+    selectVar_minNum = selectVar_minNum, selectVar_maxNum = selectVar_maxNum, cl = cl)
+    # pbapply::closepb(pb)
+    names(selected_var) <- names(train_num)
     selected_var
 }
 
@@ -283,7 +352,7 @@ Internal.compute_errorRatio <- function(rawVal, sampleType,
 Internal.run_ensemble <- function(trainSet, testSet,
                                   mtry_percent = seq(0.2, 0.8, 0.2),
                                   nodesize_percent = seq(0.2, 0.8, 0.2),
-                                  ..., return_base_res = FALSE) {
+                                  ..., return_base_res = FALSE, set_seed = NULL) {
 
     if (!is.null(mtry_percent)) mtry <- round(mtry_percent * (ncol(trainSet) - 3))
     if (!is.null(nodesize_percent)) nodesize <- round(nodesize_percent * nrow(trainSet))
@@ -293,15 +362,17 @@ Internal.run_ensemble <- function(trainSet, testSet,
                                   ... = ...)
 
     pred_ensemble <- lapply(1:nrow(rf_hyperparams), function(idx) {
+        if (!is.null(set_seed)) set.seed(set_seed * idx)
+        
         current_hyperparams <- as.list(rf_hyperparams[idx,])
-
+        
         folds_train <- Internal.createFolds(1:length(trainSet$y), k = 5, returnTrain = TRUE)
 
         res_folds <- lapply(folds_train, function(train_idx, rf_params) {
 
             train_fold     <- trainSet[train_idx,]
             validate_fold  <- trainSet[-train_idx,]
-
+            
             fold_formula <- c(formula = as.formula(y ~ .),
                               data = list(train_fold[!names(train_fold) %in% c("y_target", "y_raw")]),
                               current_hyperparams)

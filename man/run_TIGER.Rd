@@ -26,6 +26,7 @@ run_TIGER(
   mtry_percent = seq(0.2, 0.8, 0.2),
   nodesize_percent = seq(0.2, 0.8, 0.2),
   ...,
+  set_seed = NULL,
   parallel.cores = 2
 )
 }
@@ -65,7 +66,7 @@ Row: sample. Column: variable. See Examples.}
 
 \item{selectVar_corType}{a character string indicating correlation (\code{"cor"}, default) or partial correlation (\code{"pcor"}) is to be used. Can be abbreviated. Ignored if a list of selected variables has been assigned to \code{selectVar_external}. \strong{Note}: computing partial correlations of a large dataset can be very time-consuming.}
 
-\item{selectVar_corMethod}{a character string indicating which correlation coefficient is to be computed. One of \code{"spearman"} (default) or \code{"pearson"}. Can be abbreviated. Ignored if a list of selected variables has been assigned to \code{selectVar_external}.}
+\item{selectVar_corMethod}{a character string indicating which correlation coefficient is to be computed. One of \code{"pearson"} (default) or \code{"spearman"}. Can be abbreviated. Ignored if a list of selected variables has been assigned to \code{selectVar_external}.}
 
 \item{selectVar_corUse}{Indicate how to deal with missing values when computing correlation (\code{selectVar_corType = "cor"}). The value will be passed to the parameter \code{use} from \code{\link[stats]{cor}}. Support values: \code{"pairwise.complete.obs"} (default), \code{"everything"}, \code{"all.obs"}, \code{"na.or.complete"}, or \code{"complete.obs"}. See \code{\link[stats]{cor}} for details.}
 
@@ -80,6 +81,8 @@ Row: sample. Column: variable. See Examples.}
 \item{nodesize_percent}{(advanced) a numeric vector indicating the percentages of sample size used as the minimum sizes of the terminal nodes in random forest models (base learners). \strong{Note}: providing more arguments will include more base learners into the ensemble model, which will increase the processing time. Default: \code{seq(0.2, 0.8, 0.2)}.}
 
 \item{...}{(advanced) optional arguments (except \code{mtry} and \code{nodesize}) to be passed to \code{\link[randomForest]{randomForest}} for model training. Arguments \code{mtry} and \code{nodesize} are determined by \code{mtry_percent} and \code{nodesize_percent}. See \code{\link[randomForest]{randomForest}} and Examples. \strong{Note}: providing more arguments will include more base learners into the ensemble model, which will increase the processing time.}
+
+\item{set_seed}{an integer to specify seed. Use only when reproducible results are needed. Default: \code{NULL}.}
 
 \item{parallel.cores}{an integer (== -1 or >= 1) specifying the number of cores for parallel computation. Setting \code{-1} to run with all cores. Default: \code{2}.}
 }

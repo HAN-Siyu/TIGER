@@ -10,12 +10,13 @@ select_variable(
   train_batchID = NULL,
   test_batchID = NULL,
   selectVar_corType = c("cor", "pcor"),
-  selectVar_corMethod = c("spearman", "pearson"),
+  selectVar_corMethod = c("pearson", "spearman"),
   selectVar_corUse = "pairwise.complete.obs",
   selectVar_minNum = 5,
   selectVar_maxNum = 10,
   selectVar_batchWise = FALSE,
-  coerce_numeric = FALSE
+  coerce_numeric = FALSE,
+  cl = NULL
 )
 }
 \arguments{
@@ -29,7 +30,7 @@ select_variable(
 
 \item{selectVar_corType}{a character string indicating correlation (\code{"cor"}, default) or partial correlation (\code{"pcor"}) is to be used. Can be abbreviated. See Details. \strong{Note}: computing partial correlations of a large dataset can be very time-consuming.}
 
-\item{selectVar_corMethod}{a character string indicating which correlation coefficient is to be computed. One of \code{"spearman"} (default) or \code{"pearson"}. Can be abbreviated. See Details.}
+\item{selectVar_corMethod}{a character string indicating which correlation coefficient is to be computed. One of \code{"pearson"} (default) or \code{"spearman"}. Can be abbreviated. See Details.}
 
 \item{selectVar_corUse}{Indicate how to deal with missing values when computing correlation (\code{selectVar_corType = "cor"}). The value will be passed to the parameter \code{use} from \code{\link[stats]{cor}}. Support values: \code{"pairwise.complete.obs"} (default), \code{"everything"}, \code{"all.obs"}, \code{"na.or.complete"}, or \code{"complete.obs"}. See \code{\link[stats]{cor}} for details.}
 
@@ -40,6 +41,8 @@ select_variable(
 \item{selectVar_batchWise}{(advanced) logical. Specify whether the variable selection should be performed based on each batch. Default: \code{FALSE}. \strong{Note}: if \code{TRUE}, batch ID of each sample are required. The support of batch-wise variable selection is provided for data requiring special processing (for example, data with strong batch effects). But in most case, batch-wise variable selection is not necessary. Setting \code{TRUE} might make the algorithm less robust. See Details.}
 
 \item{coerce_numeric}{logical. If \code{TRUE}, values in \code{train_num} and  \code{test_num} will be coerced to numeric before the computation. The columns cannot be coerced will be removed (with warnings). See Examples. Default: \code{FALSE}.}
+
+\item{cl}{an object of class "cluster" created by \code{\link[parallel]{makeCluster}} for parallel computing. Running in parallel is only supported when \code{selectVar_corType = "cor"}. Default: \code{NULL}.}
 }
 \value{
 If \code{selectVar_batchWise = FALSE}, the function returns a list of length one containing the selected variables computed on the whole dataset.

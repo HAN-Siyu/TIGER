@@ -1,3 +1,9 @@
+# TIGERr 1.0.2 (06-Aug-2025)
+
+* Added `set_seed` option to the `run_TIGER()` function for reproducible results.
+* Pearson correlation-based feature selection now supports parallel computing to speed up large datasets and prevent memory issues caused by `cor()`.
+* Now notifies when a metabolite lacks enough observations to compute correlation during feature selection.
+
 # TIGERr 1.0.1 (01-Nov-2023)
 
 * Support passing values to the argument `use` in  `cor()` to control how to deal with missing values when computing correlation.
